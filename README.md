@@ -13,8 +13,8 @@ Este projeto é uma API RESTful para controle de estoque de produtos, desenvolvi
 
 ## Tecnologias utilizadas
 
-- Java 17
-- Spring Boot 3.1.0
+- Java 21
+- Spring Boot 3.2.3
 - Spring Data JPA
 - H2 Database (banco de dados em memória)
 - Swagger/OpenAPI para documentação da API
@@ -147,7 +147,7 @@ A documentação permite visualizar todos os endpoints disponíveis, testar as r
 ## Tecnologias utilizadas
 
 - Java 21
-- Spring Boot 3.5.0
+- Spring Boot 3.2.3
 - Spring Data JPA
 - H2 Database
 - Docker
