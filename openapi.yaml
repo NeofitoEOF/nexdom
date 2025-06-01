@@ -1,0 +1,249 @@
+openapi: 3.0.3
+info:
+  title: Desafio Nexdom API
+  description: API de controle de estoque com respostas HAL/HATEOAS (nível 3 RESTful)
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/products:
+    get:
+      summary: Listar todos os produtos
+      responses:
+        '200':
+          description: Lista de produtos
+          content:
+            application/hal+json:
+              schema:
+                $ref: '#/components/schemas/ProductListHAL'
+              examples:
+                exemplo:
+                  value:
+                    _embedded:
+                      products:
+                        - id: 1
+                          code: SMARTPHONE-001
+                          description: Smartphone Teste
+                          type: ELECTRONIC
+                          supplierValue: 1500.00
+                          stockQuantity: 7
+                          _links:
+                            self:
+                              href: http://localhost:8080/api/products/1
+                        - id: 2
+                          code: NOTEBOOK-001
+                          description: Notebook Teste
+                          type: ELECTRONIC
+                          supplierValue: 3500.00
+                          stockQuantity: 0
+                          _links:
+                            self:
+                              href: http://localhost:8080/api/products/2
+                    _links:
+                      self:
+                        href: http://localhost:8080/api/products
+  /api/products/{id}:
+    get:
+      summary: Buscar produto por ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Produto encontrado
+          content:
+            application/hal+json:
+              schema:
+                $ref: '#/components/schemas/ProductHAL'
+              examples:
+                exemplo:
+                  value:
+                    id: 1
+                    code: SMARTPHONE-001
+                    description: Smartphone Teste
+                    type: ELECTRONIC
+                    supplierValue: 1500.00
+                    stockQuantity: 7
+                    _links:
+                      self:
+                        href: http://localhost:8080/api/products/1
+                      movements:
+                        href: http://localhost:8080/api/stock-movements?productId=1
+                      profit:
+                        href: http://localhost:8080/api/stock-movements/profit/1
+  /api/stock-movements:
+    post:
+      summary: Registrar movimentação de estoque
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockMovementRequest'
+      responses:
+        '201':
+          description: Movimentação registrada
+          content:
+            application/hal+json:
+              schema:
+                $ref: '#/components/schemas/StockMovementHAL'
+              examples:
+                exemplo:
+                  value:
+                    id: 10
+                    product:
+                      id: 1
+                      _links:
+                        self:
+                          href: http://localhost:8080/api/products/1
+                    movementType: ENTRADA
+                    quantity: 10
+                    saleValue: 0.01
+                    movementDate: 2025-05-31T12:00:00
+                    _links:
+                      self:
+                        href: http://localhost:8080/api/stock-movements/10
+                      product:
+                        href: http://localhost:8080/api/products/1
+  /api/stock-movements/profit/{productId}:
+    get:
+      summary: Calcular lucro do produto
+      parameters:
+        - in: path
+          name: productId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lucro calculado
+          content:
+            application/hal+json:
+              schema:
+                $ref: '#/components/schemas/ProductProfitHAL'
+              examples:
+                exemplo:
+                  value:
+                    productId: 1
+                    profit: 1500.00
+                    _links:
+                      self:
+                        href: http://localhost:8080/api/stock-movements/profit/1
+                      product:
+                        href: http://localhost:8080/api/products/1
+components:
+  schemas:
+    ProductHAL:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+        supplierValue:
+          type: number
+        stockQuantity:
+          type: integer
+        _links:
+          $ref: '#/components/schemas/LinksProduct'
+    ProductListHAL:
+      type: object
+      properties:
+        _embedded:
+          type: object
+          properties:
+            products:
+              type: array
+              items:
+                $ref: '#/components/schemas/ProductHAL'
+        _links:
+          $ref: '#/components/schemas/LinksSelf'
+    StockMovementRequest:
+      type: object
+      properties:
+        product:
+          type: object
+          properties:
+            id:
+              type: integer
+        movementType:
+          type: string
+        quantity:
+          type: integer
+        saleValue:
+          type: number
+        movementDate:
+          type: string
+          format: date-time
+    StockMovementHAL:
+      type: object
+      properties:
+        id:
+          type: integer
+        product:
+          type: object
+          properties:
+            id:
+              type: integer
+            _links:
+              $ref: '#/components/schemas/LinksSelf'
+        movementType:
+          type: string
+        quantity:
+          type: integer
+        saleValue:
+          type: number
+        movementDate:
+          type: string
+          format: date-time
+        _links:
+          $ref: '#/components/schemas/LinksStockMovement'
+    ProductProfitHAL:
+      type: object
+      properties:
+        productId:
+          type: integer
+        profit:
+          type: number
+        _links:
+          $ref: '#/components/schemas/LinksProductProfit'
+    LinksProduct:
+      type: object
+      properties:
+        self:
+          $ref: '#/components/schemas/LinkHref'
+        movements:
+          $ref: '#/components/schemas/LinkHref'
+        profit:
+          $ref: '#/components/schemas/LinkHref'
+    LinksStockMovement:
+      type: object
+      properties:
+        self:
+          $ref: '#/components/schemas/LinkHref'
+        product:
+          $ref: '#/components/schemas/LinkHref'
+    LinksProductProfit:
+      type: object
+      properties:
+        self:
+          $ref: '#/components/schemas/LinkHref'
+        product:
+          $ref: '#/components/schemas/LinkHref'
+    LinksSelf:
+      type: object
+      properties:
+        self:
+          $ref: '#/components/schemas/LinkHref'
+    LinkHref:
+      type: object
+      properties:
+        href:
+          type: string 
