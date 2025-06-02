@@ -1,5 +1,4 @@
 package desafio.nexdom.desafio.controller;
-
 import desafio.nexdom.desafio.model.Product;
 import desafio.nexdom.desafio.model.StockMovement;
 import desafio.nexdom.desafio.model.MovementType;
@@ -11,13 +10,10 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-
 import static org.mockito.Mockito.*;
-
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -73,7 +69,6 @@ class StockMovementControllerTest {
 
     @Test
     void testCreateAndGetMovement() throws Exception {
-        // Cria e salva uma movimentação
         StockMovement savedMovement = new StockMovement();
         savedMovement.setId(77L);
         savedMovement.setProduct(testProduct);
@@ -87,7 +82,6 @@ class StockMovementControllerTest {
         when(productRepository.findById(1L)).thenReturn(java.util.Optional.of(testProduct));
         when(stockMovementRepository.findById(77L)).thenReturn(java.util.Optional.of(savedMovement));
 
-        // POST movimentação
         mockMvc.perform(post("/api/stock-movements")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{" +
@@ -101,7 +95,6 @@ class StockMovementControllerTest {
                 .andExpect(jsonPath("$.productId").value(1L))
                 .andExpect(jsonPath("$.description").value("Movimentação detalhada"));
 
-        // GET detalhado
         mockMvc.perform(get("/api/stock-movements/77"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(77L))

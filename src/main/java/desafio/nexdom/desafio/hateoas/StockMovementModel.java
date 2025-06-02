@@ -64,11 +64,6 @@ public class StockMovementModel extends BaseModel<StockMovementModel> {
         super();
     }
     
-    /**
-     * Sets the content of the model.
-     * 
-     * @param content The content to set
-     */
     public void setContent(Map<String, Object> content) {
         if (content != null) {
             this.id = (Long) content.get("id");
@@ -91,12 +86,6 @@ public class StockMovementModel extends BaseModel<StockMovementModel> {
     @io.swagger.v3.oas.annotations.media.Schema(description = "Descrição da movimentação de estoque (ex: venda, ajuste, devolução, etc.)", example = "Venda balcão 01")
     private String description;
 
-    /**
-     * Cria um StockMovementModel a partir de uma entidade StockMovement.
-     * 
-     * @param movement A entidade StockMovement a ser convertida
-     * @return Um StockMovementModel com os dados da movimentação e links HATEOAS
-     */
     public static StockMovementModel fromStockMovement(StockMovement movement) {
         if (movement == null) {
             return null;
@@ -116,31 +105,15 @@ public class StockMovementModel extends BaseModel<StockMovementModel> {
         return model;
     }
 
-    /**
-     * Adiciona os links HATEOAS ao modelo.
-     * 
-     * @param movement A entidade StockMovement original
-     */
     private void addStockMovementLinks(StockMovement movement) {
-        // Link para a própria movimentação (self)
         this.addSelfLink(desafio.nexdom.desafio.controller.StockMovementController.class, movement.getId());
 
-        // Link para deletar a movimentação
         this.addActionLink(desafio.nexdom.desafio.controller.StockMovementController.class, "delete", "DELETE", movement.getId());
 
-        // Link para listar todas as movimentações
         this.addCollectionLink(desafio.nexdom.desafio.controller.StockMovementController.class, "all-movements");
 
-        // Link para o produto relacionado
         if (movement.getProduct() != null) {
             this.addActionLink(desafio.nexdom.desafio.controller.ProductController.class, "product", "GET", movement.getProduct().getId());
         }
     }
-
-    /**
-     * Adiciona um link para criar uma nova movimentação de estoque.
-     * 
-     * @return O modelo atual para encadeamento
-     */
-    // Métodos de links removidos. Implemente conforme necessário para seu framework HATEOAS.
 }

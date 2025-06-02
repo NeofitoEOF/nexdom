@@ -22,5 +22,5 @@ public class StockMovementRequest {
     private Integer quantity;
     
     @io.swagger.v3.oas.annotations.media.Schema(description = "Descrição da movimentação de estoque (opcional)", example = "Venda balcão 01")
-    private String description; // Descrição opcional da movimentação
+    private String description; 
 }

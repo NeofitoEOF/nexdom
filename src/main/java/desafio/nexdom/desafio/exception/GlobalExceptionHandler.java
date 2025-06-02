@@ -42,7 +42,6 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(body, status);
     }
 
-    // Utilitário interno para construir o corpo do erro
     private static class ErrorResponseBuilder {
         private final Map<String, Object> body = new LinkedHashMap<>();
         public static ErrorResponseBuilder create() { return new ErrorResponseBuilder(); }

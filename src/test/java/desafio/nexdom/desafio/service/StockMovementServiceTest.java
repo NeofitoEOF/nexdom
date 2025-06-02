@@ -76,7 +76,7 @@ class StockMovementServiceTest {
     @Test
     void testStockMovementInsufficientStock() {
         testMovement.setMovementType(MovementType.SAIDA);
-        testMovement.setQuantity(15); // More than available stock
+        testMovement.setQuantity(15);
         
         when(productRepository.findById(1L)).thenReturn(Optional.of(testProduct));
 
@@ -87,32 +87,25 @@ class StockMovementServiceTest {
 
     @Test
     void testCalculateProfit() {
-        // Configurar uma movimentação de saída para gerar receita
         StockMovement exitMovement = new StockMovement();
         exitMovement.setProduct(testProduct);
         exitMovement.setMovementType(MovementType.SAIDA);
-        exitMovement.setSaleValue(BigDecimal.valueOf(200)); // Valor de venda maior que o custo
+        exitMovement.setSaleValue(BigDecimal.valueOf(200));
         exitMovement.setMovementDate(LocalDateTime.now());
         exitMovement.setQuantity(5);
         exitMovement.setDescription("Saída de estoque para venda");
-        
-        // Configurar o mock para retornar a movimentação de saída
+
         when(stockMovementRepository.findAll()).thenReturn(java.util.List.of(exitMovement));
         when(productRepository.findById(1L)).thenReturn(Optional.of(testProduct));
 
         BigDecimal profit = stockMovementService.calculateProfit(1L);
 
         assertNotNull(profit);
-        // Verificar se o lucro é calculado corretamente
-        // Receita: 5 * 200 = 1000
-        // Custo: 10 * 100 = 1000 (estoque atual * valor do fornecedor)
-        // Lucro esperado: 1000 - 1000 = 0
         assertEquals(BigDecimal.ZERO, profit);
     }
     
     @Test
     void testCalculateProfitWithMultipleMovements() {
-        // Criar múltiplas movimentações para testar cenário mais complexo
         StockMovement exitMovement1 = new StockMovement();
         exitMovement1.setProduct(testProduct);
         exitMovement1.setMovementType(MovementType.SAIDA);
@@ -140,9 +133,6 @@ class StockMovementServiceTest {
         BigDecimal profit = stockMovementService.calculateProfit(1L);
 
         assertNotNull(profit);
-        // Receita: (3 * 200) + (2 * 250) = 600 + 500 = 1100
-        // Custo: 10 * 100 = 1000
-        // Lucro esperado: 1100 - 1000 = 100
         assertEquals(BigDecimal.valueOf(100), profit);
     }
 }

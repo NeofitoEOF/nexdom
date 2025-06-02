@@ -47,13 +47,7 @@ public class StockMovementController {
     @Autowired
     private desafio.nexdom.desafio.service.StockMovementService stockMovementServiceCustom;
 
-
-
-    // ... demais injeções e construtor
-
-    /**
-     * Endpoint para detalhar uma movimentação de estoque por ID
-     */
+  
     @GetMapping("/{id}")
     public ResponseEntity<StockMovementModel> getMovementById(@PathVariable Long id) {
         StockMovement movement = stockMovementRepository.findById(id)
@@ -62,19 +56,14 @@ public class StockMovementController {
         return ResponseEntity.ok(model);
     }
 
-    /**
-     * Endpoint para atualizar uma movimentação de estoque
-     */
     @PutMapping("/{id}")
     public ResponseEntity<StockMovementModel> updateMovement(@PathVariable Long id, @Valid @RequestBody desafio.nexdom.desafio.dto.StockMovementRequest request) {
         StockMovement movement = stockMovementRepository.findById(id)
                 .orElseThrow(() -> new desafio.nexdom.desafio.exception.ProductNotFoundException(id));
-        // Atualiza campos permitidos
         movement.setMovementType(request.getMovementType());
         movement.setSaleValue(request.getSaleValue());
         movement.setQuantity(request.getQuantity());
         movement.setDescription(request.getDescription());
-        // Produto só atualiza se existir
         if (request.getProductId() != null) {
             Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new desafio.nexdom.desafio.exception.ProductNotFoundException(request.getProductId()));

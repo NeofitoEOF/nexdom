@@ -4,38 +4,18 @@ import desafio.nexdom.desafio.exception.ProductNotFoundException;
 import desafio.nexdom.desafio.hateoas.ProductModel;
 import desafio.nexdom.desafio.model.Product;
 import desafio.nexdom.desafio.interfaces.IProductService;
-
 import java.net.URI;
 import java.util.*;
-
-
 import jakarta.validation.Valid;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-
-
-
-
-
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-
-
-
-
-
-
-
-
-
-
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
@@ -112,7 +92,6 @@ public class ProductController {
     public ResponseEntity<Void> deleteProduct(
             @PathVariable Long id) {
         LOG.info("Deletando produto ID: {}", id);
-        // Verifica existência do produto antes de deletar
         if (productService.findById(id) == null) {
             LOG.warn("Tentativa de deletar produto inexistente ID: {}", id);
             throw new ProductNotFoundException(id);
@@ -120,7 +99,6 @@ public class ProductController {
         productService.deleteById(id);
         LOG.info("Produto deletado ID: {}", id);
         HttpHeaders headers = new HttpHeaders();
-        // Adiciona o header Link para a lista de produtos (HATEOAS)
         headers.add("Link", linkTo(methodOn(ProductController.class).getAllProducts(Pageable.unpaged())).withRel("products").toString());
         return new ResponseEntity<>(headers, HttpStatus.NO_CONTENT);
     }

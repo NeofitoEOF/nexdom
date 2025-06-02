@@ -45,7 +45,6 @@ public class StockMovement {
     @io.swagger.v3.oas.annotations.media.Schema(description = "Descrição da movimentação de estoque (ex: venda, ajuste, devolução, etc.)", example = "Venda balcão 01")
     private String description;
     
-    // Helper method to get product ID
     @JsonIgnore
     public Long getProductId() {
         return product != null ? product.getId() : null;
