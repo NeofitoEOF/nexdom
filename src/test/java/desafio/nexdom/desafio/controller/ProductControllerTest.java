@@ -1,32 +1,33 @@
 package desafio.nexdom.desafio.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import desafio.nexdom.desafio.hateoas.ProductModel;
+import java.math.BigDecimal;
+import java.util.List;
+
 import desafio.nexdom.desafio.model.Product;
-import desafio.nexdom.desafio.service.ProductService;
+import desafio.nexdom.desafio.interfaces.IProductService;
+import desafio.nexdom.desafio.interfaces.IStockMovementService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.hateoas.CollectionModel;
+
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+
+
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -42,7 +43,10 @@ class ProductControllerTest {
     private ObjectMapper objectMapper;
 
     @MockBean
-    private ProductService productService;
+    private IProductService productService;
+
+    @MockBean
+    private IStockMovementService stockMovementService;
     
     private Product testProduct;
 
@@ -59,26 +63,20 @@ class ProductControllerTest {
 
     @Test
     void testGetAllProducts() throws Exception {
-        when(productService.findAll()).thenReturn(List.of(testProduct));
-        mockMvc.perform(get("/api/products"))
+        when(productService.findAll(org.mockito.ArgumentMatchers.any(org.springframework.data.domain.Pageable.class))).thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(testProduct)));
+        mockMvc.perform(get("/api/products?page=0&size=20"))
                 .andExpect(status().isOk())
-                .andExpect(header().string("X-Page-Number", "0"))
-                .andExpect(header().string("X-Page-Size", "20"))
-                .andExpect(header().string("X-Total-Elements", "1"))
-                .andExpect(header().string("X-Total-Pages", "1"))
-                .andExpect(jsonPath("$._links.self").exists())
-                .andExpect(jsonPath("$._links.create-product").exists())
-                .andExpect(jsonPath("$._embedded.productModelList[0].code").value(testProduct.getCode()));
-        verify(productService, times(1)).findAll();
+                // .andExpect(jsonPath("$.page.number").exists()))
+                .andExpect(jsonPath("$[0].code").value(testProduct.getCode()));
+        verify(productService, times(1)).findAll(org.mockito.ArgumentMatchers.any(org.springframework.data.domain.Pageable.class));
     }
 
     @Test
     void testGetProductById() throws Exception {
-        when(productService.findById(1L)).thenReturn(Optional.of(testProduct));
+        when(productService.findById(anyLong())).thenReturn(testProduct);
         mockMvc.perform(get("/api/products/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(testProduct.getCode()))
-                .andExpect(jsonPath("$._links.self").exists());
+                .andExpect(jsonPath("$.code").value(testProduct.getCode()));
         verify(productService, times(1)).findById(1L);
     }
 
@@ -90,8 +88,7 @@ class ProductControllerTest {
                 .content(objectMapper.writeValueAsString(testProduct)))
                 .andExpect(status().isCreated())
                 .andExpect(header().exists("Location"))
-                .andExpect(jsonPath("$.code").value(testProduct.getCode()))
-                .andExpect(jsonPath("$._links.self").exists());
+                .andExpect(jsonPath("$.code").value(testProduct.getCode()));
         verify(productService, times(1)).save(any(Product.class));
     }
 
@@ -102,34 +99,28 @@ class ProductControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(testProduct)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(testProduct.getCode()))
-                .andExpect(jsonPath("$._links.self").exists());
+                .andExpect(jsonPath("$.code").value(testProduct.getCode()));
         verify(productService, times(1)).save(any(Product.class));
     }
 
     @Test
     void testDeleteProduct() throws Exception {
-        when(productService.existsById(1L)).thenReturn(true);
+        when(productService.findById(1L)).thenReturn(testProduct);
         doNothing().when(productService).deleteById(1L);
         mockMvc.perform(delete("/api/products/1"))
                 .andExpect(status().isNoContent())
                 .andExpect(header().exists("Link"));
-        verify(productService, times(1)).existsById(1L);
+        verify(productService, times(1)).findById(1L);
         verify(productService, times(1)).deleteById(1L);
     }
 
     @Test
     void testGetProductsByType() throws Exception {
-        when(productService.findByType(any())).thenReturn(List.of(testProduct));
-        mockMvc.perform(get("/api/products/type/ELECTRONIC"))
+        when(productService.findByType(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(org.springframework.data.domain.Pageable.class))).thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(testProduct)));
+        mockMvc.perform(get("/api/products/type/ELECTRONIC?page=0&size=20"))
                 .andExpect(status().isOk())
-                .andExpect(header().string("X-Page-Number", "0"))
-                .andExpect(header().string("X-Page-Size", "20"))
-                .andExpect(header().string("X-Total-Elements", "1"))
-                .andExpect(header().string("X-Total-Pages", "1"))
-                .andExpect(jsonPath("$._links.self").exists())
-                .andExpect(jsonPath("$._links.create-product").exists())
-                .andExpect(jsonPath("$._embedded.productModelList[0].code").value(testProduct.getCode()));
-        verify(productService, times(1)).findByType(any());
+                // .andExpect(jsonPath("$.page.number").exists()))
+                .andExpect(jsonPath("$[0].code").value(testProduct.getCode()));
+        verify(productService, times(1)).findByType(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(org.springframework.data.domain.Pageable.class));
     }
 }

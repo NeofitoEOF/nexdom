@@ -6,8 +6,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
-import desafio.nexdom.desafio.controller.ProductController;
-import desafio.nexdom.desafio.controller.StockMovementController;
+
+
 import desafio.nexdom.desafio.model.StockMovement;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
@@ -77,6 +77,7 @@ public class StockMovementModel extends BaseModel<StockMovementModel> {
             this.saleValue = (BigDecimal) content.get("saleValue");
             this.movementDate = (LocalDateTime) content.get("movementDate");
             this.quantity = (Integer) content.get("quantity");
+            this.description = (String) content.get("description");
         }
     }
 
@@ -86,6 +87,9 @@ public class StockMovementModel extends BaseModel<StockMovementModel> {
         required = true
     )
     private Integer quantity;
+
+    @io.swagger.v3.oas.annotations.media.Schema(description = "Descrição da movimentação de estoque (ex: venda, ajuste, devolução, etc.)", example = "Venda balcão 01")
+    private String description;
 
     /**
      * Cria um StockMovementModel a partir de uma entidade StockMovement.
@@ -105,6 +109,7 @@ public class StockMovementModel extends BaseModel<StockMovementModel> {
         model.setSaleValue(movement.getSaleValue());
         model.setMovementDate(movement.getMovementDate());
         model.setQuantity(movement.getQuantity());
+        model.setDescription(movement.getDescription()); // garante preenchimento
         
         model.addStockMovementLinks(movement);
         
@@ -117,20 +122,18 @@ public class StockMovementModel extends BaseModel<StockMovementModel> {
      * @param movement A entidade StockMovement original
      */
     private void addStockMovementLinks(StockMovement movement) {
-        if (movement == null) {
-            return;
-        }
+        // Link para a própria movimentação (self)
+        this.addSelfLink(desafio.nexdom.desafio.controller.StockMovementController.class, movement.getId());
 
-        Long movementId = movement.getId();
-        Long productId = movement.getProduct() != null ? movement.getProduct().getId() : null;
+        // Link para deletar a movimentação
+        this.addActionLink(desafio.nexdom.desafio.controller.StockMovementController.class, "delete", "DELETE", movement.getId());
 
-        addSelfLink(StockMovementController.class, movementId)
-            .addCollectionLink(StockMovementController.class, "stock-movements");
+        // Link para listar todas as movimentações
+        this.addCollectionLink(desafio.nexdom.desafio.controller.StockMovementController.class, "all-movements");
 
-        if (productId != null) {
-            addActionLink(StockMovementController.class, "product-movements", "GET", "by-product", productId)
-                .addActionLink(StockMovementController.class, "profit", "GET", "profit", productId)
-                .addActionLink(ProductController.class, "product", "GET", productId);
+        // Link para o produto relacionado
+        if (movement.getProduct() != null) {
+            this.addActionLink(desafio.nexdom.desafio.controller.ProductController.class, "product", "GET", movement.getProduct().getId());
         }
     }
 
@@ -139,20 +142,5 @@ public class StockMovementModel extends BaseModel<StockMovementModel> {
      * 
      * @return O modelo atual para encadeamento
      */
-    public StockMovementModel addCreateStockMovementLink() {
-        return addActionLink(StockMovementController.class, "create-stock-movement", "POST");
-    }
-
-    /**
-     * Adiciona um link para o produto relacionado.
-     * 
-     * @param productId O ID do produto
-     * @return O modelo atual para encadeamento
-     */
-    public StockMovementModel addProductLink(Long productId) {
-        if (productId != null) {
-            addActionLink(ProductController.class, "product", "GET", productId);
-        }
-        return this;
-    }
+    // Métodos de links removidos. Implemente conforme necessário para seu framework HATEOAS.
 }

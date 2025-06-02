@@ -1,6 +1,8 @@
 package desafio.nexdom.desafio.service;
 
 import desafio.nexdom.desafio.model.Product;
+import org.springframework.data.domain.Pageable;
+
 import desafio.nexdom.desafio.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -9,11 +11,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
-import java.util.Optional;
+
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import java.util.Optional;
+import java.util.List;
 
 @ExtendWith(MockitoExtension.class)
 class ProductServiceTest {
@@ -21,7 +25,7 @@ class ProductServiceTest {
     private ProductRepository productRepository;
 
     @InjectMocks
-    private ProductService productService;
+    private ProductServiceImpl productService;
 
     private Product testProduct;
 
@@ -49,12 +53,12 @@ class ProductServiceTest {
 
     @Test
     void testFindProductById() {
-        when(productRepository.findById(1L)).thenReturn(Optional.of(testProduct));
+        when(productRepository.findById(anyLong())).thenReturn(Optional.of(testProduct));
 
-        Optional<Product> foundProduct = productService.findById(1L);
+        Product foundProduct = productService.findById(1L);
 
-        assertTrue(foundProduct.isPresent());
-        assertEquals(testProduct, foundProduct.get());
+        assertNotNull(foundProduct);
+        assertEquals(testProduct, foundProduct);
         verify(productRepository, times(1)).findById(1L);
     }
 
@@ -66,11 +70,11 @@ class ProductServiceTest {
 
     @Test
     void testFindProductsByType() {
-        when(productRepository.findAll()).thenReturn(java.util.List.of(testProduct));
+        when(productRepository.findAll(any(Pageable.class))).thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(testProduct)));
 
-        var products = productService.findByType("ELECTRONIC");
+        var products = productService.findByType("ELECTRONIC", Pageable.unpaged());
 
-        assertFalse(products.isEmpty());
-        verify(productRepository, times(1)).findAll();
+        assertTrue(products.getContent().size() > 0);
+        verify(productRepository, times(1)).findAll(any(Pageable.class));
     }
 }

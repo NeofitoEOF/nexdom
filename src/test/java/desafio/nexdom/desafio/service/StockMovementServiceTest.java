@@ -1,11 +1,13 @@
 package desafio.nexdom.desafio.service;
 
 import desafio.nexdom.desafio.exception.InsufficientStockException;
+import desafio.nexdom.desafio.interfaces.IProductService;
 import desafio.nexdom.desafio.model.Product;
 import desafio.nexdom.desafio.model.StockMovement;
 import desafio.nexdom.desafio.model.MovementType;
 import desafio.nexdom.desafio.repository.ProductRepository;
 import desafio.nexdom.desafio.repository.StockMovementRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,10 +33,10 @@ class StockMovementServiceTest {
     private ProductRepository productRepository;
 
     @Mock
-    private ProductService productService;
+    private IProductService productService;
 
     @InjectMocks
-    private StockMovementService stockMovementService;
+    private StockMovementServiceImpl stockMovementService;
 
     private Product testProduct;
     private StockMovement testMovement;
@@ -55,6 +57,7 @@ class StockMovementServiceTest {
         testMovement.setSaleValue(BigDecimal.valueOf(150));
         testMovement.setMovementDate(LocalDateTime.now());
         testMovement.setQuantity(5);
+        testMovement.setDescription("Movimentação de teste");
     }
 
     @Test
@@ -91,6 +94,7 @@ class StockMovementServiceTest {
         exitMovement.setSaleValue(BigDecimal.valueOf(200)); // Valor de venda maior que o custo
         exitMovement.setMovementDate(LocalDateTime.now());
         exitMovement.setQuantity(5);
+        exitMovement.setDescription("Saída de estoque para venda");
         
         // Configurar o mock para retornar a movimentação de saída
         when(stockMovementRepository.findAll()).thenReturn(java.util.List.of(exitMovement));

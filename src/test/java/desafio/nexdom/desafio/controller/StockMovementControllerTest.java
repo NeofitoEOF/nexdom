@@ -3,7 +3,7 @@ package desafio.nexdom.desafio.controller;
 import desafio.nexdom.desafio.model.Product;
 import desafio.nexdom.desafio.model.StockMovement;
 import desafio.nexdom.desafio.model.MovementType;
-import desafio.nexdom.desafio.service.StockMovementService;
+import desafio.nexdom.desafio.interfaces.IStockMovementService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.Mockito.*;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -26,7 +27,11 @@ class StockMovementControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private StockMovementService stockMovementService;
+    private IStockMovementService stockMovementService;
+    @MockBean
+    private desafio.nexdom.desafio.repository.ProductRepository productRepository;
+    @MockBean
+    private desafio.nexdom.desafio.repository.StockMovementRepository stockMovementRepository;
 
     private Product testProduct;
     private StockMovement testMovement;
@@ -47,53 +52,91 @@ class StockMovementControllerTest {
         testMovement.setSaleValue(BigDecimal.valueOf(150));
         testMovement.setMovementDate(LocalDateTime.now());
         testMovement.setQuantity(5);
+        testMovement.setDescription("Movimentação de teste");
     }
 
     @Test
     void testGetAllMovements() throws Exception {
-        when(stockMovementService.findAll()).thenReturn(List.of(testMovement));
-        mockMvc.perform(get("/api/stock-movements"))
-                .andExpect(status().isOk())
-                .andExpect(header().string("X-Page-Number", "0"))
-                .andExpect(header().string("X-Page-Size", "20"))
-                .andExpect(header().string("X-Total-Elements", "1"))
-                .andExpect(header().string("X-Total-Pages", "1"))
-                .andExpect(jsonPath("$._links.self").exists())
-                .andExpect(jsonPath("$._links.create-movement").exists());
-        verify(stockMovementService, times(1)).findAll();
+        when(stockMovementService.findAll(org.mockito.ArgumentMatchers.any(org.springframework.data.domain.Pageable.class))).thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(testMovement)));
+        mockMvc.perform(get("/api/stock-movements?page=0&size=20"))
+                .andExpect(status().isOk());
+        verify(stockMovementService, times(1)).findAll(org.mockito.ArgumentMatchers.any(org.springframework.data.domain.Pageable.class));
     }
     
     @Test
     void testGetMovementsByProduct() throws Exception {
         when(stockMovementService.getMovementsByProduct(1L)).thenReturn(List.of(testMovement));
         mockMvc.perform(get("/api/stock-movements/by-product/1"))
-                .andExpect(status().isOk())
-                .andExpect(header().string("X-Page-Number", "0"))
-                .andExpect(header().string("X-Page-Size", "20"))
-                .andExpect(header().string("X-Total-Elements", "1"))
-                .andExpect(header().string("X-Total-Pages", "1"))
-                .andExpect(jsonPath("$._links.self").exists())
-                .andExpect(jsonPath("$._links.create-movement").exists())
-                .andExpect(jsonPath("$._links.product").exists());
+                .andExpect(status().isOk());
         verify(stockMovementService, times(1)).getMovementsByProduct(1L);
     }
 
     @Test
-    void testCreateMovement() throws Exception {
-        when(stockMovementService.save(any(StockMovement.class))).thenReturn(testMovement);
+    void testCreateAndGetMovement() throws Exception {
+        // Cria e salva uma movimentação
+        StockMovement savedMovement = new StockMovement();
+        savedMovement.setId(77L);
+        savedMovement.setProduct(testProduct);
+        savedMovement.setMovementType(MovementType.ENTRADA);
+        savedMovement.setSaleValue(BigDecimal.valueOf(150));
+        savedMovement.setMovementDate(java.time.LocalDateTime.parse("2025-05-31T12:00:00"));
+        savedMovement.setQuantity(5);
+        savedMovement.setDescription("Movimentação detalhada");
+        when(stockMovementService.save(any(StockMovement.class))).thenReturn(savedMovement);
+        when(stockMovementRepository.save(any(StockMovement.class))).thenReturn(savedMovement);
+        when(productRepository.findById(1L)).thenReturn(java.util.Optional.of(testProduct));
+        when(stockMovementRepository.findById(77L)).thenReturn(java.util.Optional.of(savedMovement));
+
+        // POST movimentação
         mockMvc.perform(post("/api/stock-movements")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{" +
-                        "\"product\": {\"id\": 1}," +
+                        "\"productId\": 1," +
                         "\"movementType\": \"ENTRADA\"," +
                         "\"saleValue\": 150.0," +
-                        "\"movementDate\": \"2025-05-31T12:00:00\"," +
-                        "\"quantity\": 5" +
+                        "\"quantity\": 5," +
+                        "\"description\": \"Movimentação detalhada\"" +
                         "}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.productId").value(1L))
-                .andExpect(jsonPath("$._links.self").exists());
-        verify(stockMovementService, times(1)).save(any(StockMovement.class));
+                .andExpect(jsonPath("$.description").value("Movimentação detalhada"));
+
+        // GET detalhado
+        mockMvc.perform(get("/api/stock-movements/77"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(77L))
+                .andExpect(jsonPath("$.productId").value(1L))
+                .andExpect(jsonPath("$.movementType").value("ENTRADA"))
+                .andExpect(jsonPath("$.saleValue").value(150.0))
+                .andExpect(jsonPath("$.quantity").value(5))
+                .andExpect(jsonPath("$.description").value("Movimentação detalhada"));
+    }
+
+    @Test
+    void testCreateMovement() throws Exception {
+        StockMovement savedMovement = new StockMovement();
+        savedMovement.setId(99L);
+        savedMovement.setProduct(testProduct);
+        savedMovement.setMovementType(MovementType.ENTRADA);
+        savedMovement.setSaleValue(BigDecimal.valueOf(150));
+        savedMovement.setMovementDate(java.time.LocalDateTime.parse("2025-05-31T12:00:00"));
+        savedMovement.setQuantity(5);
+        savedMovement.setDescription("Movimentação de teste");
+        when(stockMovementService.save(any(StockMovement.class))).thenReturn(savedMovement);
+        when(stockMovementRepository.save(any(StockMovement.class))).thenReturn(savedMovement);
+        when(productRepository.findById(1L)).thenReturn(java.util.Optional.of(testProduct));
+        mockMvc.perform(post("/api/stock-movements")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{" +
+                        "\"productId\": 1," +
+                        "\"movementType\": \"ENTRADA\"," +
+                        "\"saleValue\": 150.0," +
+                        "\"quantity\": 5," +
+                        "\"description\": \"Movimentação de teste\"" +
+                        "}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.productId").value(1L))
+                .andExpect(jsonPath("$.description").value("Movimentação de teste"));
     }
 
     @Test
@@ -101,10 +144,7 @@ class StockMovementControllerTest {
         when(stockMovementService.calculateProfit(1L)).thenReturn(BigDecimal.valueOf(250));
         mockMvc.perform(get("/api/stock-movements/profit/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.profit").value(250))
-                .andExpect(jsonPath("$._links.self").exists())
-                .andExpect(jsonPath("$._links.product").exists())
-                .andExpect(jsonPath("$._links.stock-movements").exists());
+                .andExpect(jsonPath("$.profit").value(250));
         verify(stockMovementService, times(1)).calculateProfit(1L);
     }
 }

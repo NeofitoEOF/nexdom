@@ -112,8 +112,8 @@ docker logs -f desafio-app-1
 ```
 
 A aplicação estará disponível em:
-- API: http://localhost:8082
-- Console H2 (banco de dados): http://localhost:8082/h2-console
+- API: http://localhost:8080
+- Console H2 (banco de dados): http://localhost:8080/h2-console
   - JDBC URL: jdbc:h2:mem:testdb
   - Usuário: sa
   - Senha: password
@@ -122,9 +122,9 @@ A aplicação estará disponível em:
 
 A API é documentada usando o SpringDoc OpenAPI (Swagger). Você pode acessar a documentação interativa em:
 
-- Swagger UI: http://localhost:8082/swagger-ui/index.html
-- Especificação OpenAPI (JSON): http://localhost:8082/v3/api-docs
-- Especificação OpenAPI (YAML): http://localhost:8082/v3/api-docs.yaml
+- Swagger UI: http://localhost:8080/swagger-ui/index.html
+- Especificação OpenAPI (JSON): http://localhost:8080/v3/api-docs
+- Especificação OpenAPI (YAML): http://localhost:8080/v3/api-docs.yaml
 
 A documentação permite visualizar todos os endpoints disponíveis, testar as requisições diretamente pela interface e verificar os modelos de dados utilizados.
 
@@ -162,7 +162,7 @@ A documentação permite visualizar todos os endpoints disponíveis, testar as r
 A aplicação já está configurada com filtros CORS para permitir requisições de qualquer origem. Se você encontrar problemas de CORS ao acessar o Swagger UI ou fazer requisições para a API, verifique:
 
 1. Se o contêiner Docker está em execução (`docker ps`)
-2. Se a aplicação está acessível na porta 8082 (`curl -I http://localhost:8082`)
+2. Se a aplicação está acessível na porta 8082 (`curl -I http://localhost:8080`)
 3. Se os logs mostram algum erro (`docker logs -f desafio-app-1`)
 
 ### Parando a aplicação

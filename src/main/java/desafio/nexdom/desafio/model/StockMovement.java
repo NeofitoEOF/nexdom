@@ -40,6 +40,10 @@ public class StockMovement {
     @NotNull
     @Min(1)
     private Integer quantity;
+
+    @Column(length = 255)
+    @io.swagger.v3.oas.annotations.media.Schema(description = "Descrição da movimentação de estoque (ex: venda, ajuste, devolução, etc.)", example = "Venda balcão 01")
+    private String description;
     
     // Helper method to get product ID
     @JsonIgnore

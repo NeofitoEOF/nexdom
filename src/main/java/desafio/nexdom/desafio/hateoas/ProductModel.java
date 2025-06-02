@@ -3,8 +3,8 @@ package desafio.nexdom.desafio.hateoas;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import desafio.nexdom.desafio.controller.ProductController;
-import desafio.nexdom.desafio.controller.StockMovementController;
+
+
 import desafio.nexdom.desafio.model.Product;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
@@ -93,14 +93,22 @@ public class ProductModel extends BaseModel<ProductModel> {
      * @param productId O ID do produto
      */
     private void addProductLinks(Long productId) {
-        // Link para o próprio recurso
-        addSelfLink(ProductController.class, productId)
-         
-            .addActionLink(ProductController.class, "update", "PUT", productId)
-            .addActionLink(ProductController.class, "delete", "DELETE", productId)
-            .addCollectionLink(ProductController.class, "products")
-            .addActionLink(StockMovementController.class, "stock-movements", "GET", "by-product", productId)
-            .addActionLink(StockMovementController.class, "profit", "GET", "profit", productId);
+        // Link para o próprio produto (self)
+        this.addSelfLink(desafio.nexdom.desafio.controller.ProductController.class, productId);
+
+        // Link para atualizar o produto
+        this.addActionLink(desafio.nexdom.desafio.controller.ProductController.class, "update", "PUT", productId);
+
+        // Link para deletar o produto
+        this.addActionLink(desafio.nexdom.desafio.controller.ProductController.class, "delete", "DELETE", productId);
+
+        // Link para listar todos os produtos
+        this.addCollectionLink(desafio.nexdom.desafio.controller.ProductController.class, "all-products");
+
+        // Link para listar produtos do mesmo tipo
+        if (this.getType() != null) {
+            this.addActionLink(desafio.nexdom.desafio.controller.ProductController.class, "by-type", "GET", this.getType());
+        }
     }
 
     /**
@@ -109,16 +117,5 @@ public class ProductModel extends BaseModel<ProductModel> {
      * @param type O tipo de produto
      * @return O modelo atual para encadeamento
      */
-    public ProductModel addProductsByTypeLink(String type) {
-        return addActionLink(ProductController.class, "products-by-type", "GET", "type", type);
-    }
-
-    /**
-     * Adiciona um link para criar uma nova movimentação de estoque para este produto.
-     * 
-     * @return O modelo atual para encadeamento
-     */
-    public ProductModel addCreateStockMovementLink() {
-        return addActionLink(StockMovementController.class, "create-stock-movement", "POST");
-    }
+    // Métodos de links removidos. Implemente conforme necessário para seu framework HATEOAS.
 }

@@ -20,6 +20,7 @@ import java.net.URI;
 @Getter
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class BaseModel<T extends RepresentationModel<? extends T>> extends RepresentationModel<T> {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(BaseModel.class);
     
     @JsonUnwrapped
     private Object content;
@@ -49,7 +50,7 @@ public class BaseModel<T extends RepresentationModel<? extends T>> extends Repre
             this.add(link);
         } catch (Exception e) {
             // Log the error but don't fail the request
-            System.err.println("Error adding self link: " + e.getMessage());
+            LOG.error("Error adding self link: {}", e.getMessage());
         }
         return (T) this;
     }
@@ -69,7 +70,7 @@ public class BaseModel<T extends RepresentationModel<? extends T>> extends Repre
             this.add(link);
         } catch (Exception e) {
             // Log the error but don't fail the request
-            System.err.println("Error adding collection link: " + e.getMessage());
+            LOG.error("Error adding collection link: {}", e.getMessage());
         }
         return (T) this;
     }
@@ -95,7 +96,7 @@ public class BaseModel<T extends RepresentationModel<? extends T>> extends Repre
             this.add(link);
         } catch (Exception e) {
             // Log the error but don't fail the request
-            System.err.println("Error adding action link: " + e.getMessage());
+            LOG.error("Error adding action link: {}", e.getMessage());
         }
         return (T) this;
     }
@@ -114,7 +115,7 @@ public class BaseModel<T extends RepresentationModel<? extends T>> extends Repre
             this.add(link);
         } catch (Exception e) {
             // Log the error but don't fail the request
-            System.err.println("Error adding custom link: " + e.getMessage());
+            LOG.error("Error adding custom link: {}", e.getMessage());
         }
         return (T) this;
     }

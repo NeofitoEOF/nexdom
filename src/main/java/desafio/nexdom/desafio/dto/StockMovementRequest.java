@@ -21,5 +21,6 @@ public class StockMovementRequest {
     @Min(value = 1, message = "A quantidade deve ser maior que zero")
     private Integer quantity;
     
-    private String description;
+    @io.swagger.v3.oas.annotations.media.Schema(description = "Descrição da movimentação de estoque (opcional)", example = "Venda balcão 01")
+    private String description; // Descrição opcional da movimentação
 }

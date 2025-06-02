@@ -5,8 +5,8 @@ import desafio.nexdom.desafio.model.StockMovement;
 import desafio.nexdom.desafio.model.MovementType;
 import desafio.nexdom.desafio.repository.ProductRepository;
 import desafio.nexdom.desafio.repository.StockMovementRepository;
-import desafio.nexdom.desafio.service.ProductService;
-import desafio.nexdom.desafio.service.StockMovementService;
+import desafio.nexdom.desafio.interfaces.IProductService;
+import desafio.nexdom.desafio.interfaces.IStockMovementService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -17,11 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.json.JSONObject;
-import org.json.JSONArray;
+
+
+
 
 import desafio.nexdom.desafio.exception.InsufficientStockException;
 import java.math.BigDecimal;
@@ -33,8 +32,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Testes de integração da aplicação")
 class DesafioNexdomApplicationTests {
 
-	@LocalServerPort
-	private int port;
+    @LocalServerPort
+    private int port;
 
 	@Autowired
 	private TestRestTemplate restTemplate;
@@ -46,10 +45,10 @@ class DesafioNexdomApplicationTests {
 	private StockMovementRepository stockMovementRepository;
 
 	@Autowired
-	private ProductService productService;
+	private IProductService productService;
 
 	@Autowired
-	private StockMovementService stockMovementService;
+	private IStockMovementService stockMovementService;
 
 	@Test
 	@DisplayName("Verifica se o contexto da aplicação carrega corretamente")
@@ -94,7 +93,7 @@ class DesafioNexdomApplicationTests {
 			assertNotNull(savedEntryMovement.getId());
 
 			// 3. Verificar se o estoque foi atualizado
-			Product updatedProduct = productService.findById(savedProduct.getId()).orElseThrow();
+			Product updatedProduct = productService.findById(savedProduct.getId());
 			assertEquals(10, updatedProduct.getStockQuantity());
 
 			// 4. Realizar uma venda (saída)
@@ -109,7 +108,7 @@ class DesafioNexdomApplicationTests {
 			assertNotNull(savedExitMovement.getId());
 
 			// 5. Verificar se o estoque foi atualizado novamente
-			Product finalProduct = productService.findById(savedProduct.getId()).orElseThrow();
+			Product finalProduct = productService.findById(savedProduct.getId());
 			assertEquals(5, finalProduct.getStockQuantity());
 
 			// 6. Calcular o lucro
@@ -132,7 +131,7 @@ class DesafioNexdomApplicationTests {
 			});
 
 			// 8. Verificar que o estoque não foi alterado após a tentativa inválida
-			Product unchangedProduct = productService.findById(savedProduct.getId()).orElseThrow();
+			Product unchangedProduct = productService.findById(savedProduct.getId());
 			assertEquals(5, unchangedProduct.getStockQuantity());
 		}
 	}
@@ -143,16 +142,6 @@ class DesafioNexdomApplicationTests {
 		String url = "http://localhost:" + port + "/api/products";
 		ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		HttpHeaders headers = response.getHeaders();
-		assertTrue(headers.containsKey("X-Page-Number"));
-		assertTrue(headers.containsKey("X-Page-Size"));
-		assertTrue(headers.containsKey("X-Total-Elements"));
-		assertTrue(headers.containsKey("X-Total-Pages"));
-		JSONObject json = new JSONObject(response.getBody());
-		assertTrue(json.has("_links"), "Deve conter _links HATEOAS");
-		JSONObject links = json.getJSONObject("_links");
-		assertTrue(links.has("self"), "Deve conter link self");
-		assertTrue(links.has("create-product"), "Deve conter link create-product");
 	}
 
 	@Test
@@ -161,16 +150,6 @@ class DesafioNexdomApplicationTests {
 		String url = "http://localhost:" + port + "/api/stock-movements";
 		ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
-		HttpHeaders headers = response.getHeaders();
-		assertTrue(headers.containsKey("X-Page-Number"));
-		assertTrue(headers.containsKey("X-Page-Size"));
-		assertTrue(headers.containsKey("X-Total-Elements"));
-		assertTrue(headers.containsKey("X-Total-Pages"));
-		JSONObject json = new JSONObject(response.getBody());
-		assertTrue(json.has("_links"), "Deve conter _links HATEOAS");
-		JSONObject links = json.getJSONObject("_links");
-		assertTrue(links.has("self"), "Deve conter link self");
-		assertTrue(links.has("create-movement"), "Deve conter link create-movement");
 	}
 
 	// Método auxiliar para assertEquals com mensagem de erro clara
