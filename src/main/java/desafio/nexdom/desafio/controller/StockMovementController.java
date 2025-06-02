@@ -8,35 +8,20 @@ import desafio.nexdom.desafio.hateoas.StockMovementModel;
 import desafio.nexdom.desafio.model.Product;
 import desafio.nexdom.desafio.model.StockMovement;
 import desafio.nexdom.desafio.interfaces.IStockMovementService;
-
-
-
-
-
-
-
-
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.beans.factory.annotation.Autowired;
-
-
-
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-
 import desafio.nexdom.desafio.exception.InsufficientStockException;
 import desafio.nexdom.desafio.model.MovementType;
 import desafio.nexdom.desafio.repository.ProductRepository;
 import desafio.nexdom.desafio.repository.StockMovementRepository;
 import jakarta.validation.Valid;
-
 import java.net.URI;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
-
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
