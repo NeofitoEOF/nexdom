@@ -26,6 +26,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
         @Tag(name = "Movimentações de Estoque", description = "Operações de movimentação de estoque")
     }
 )
+
+/**
+ * Configuração centralizada do OpenAPI/Swagger para documentação da API REST.
+ * Define metadados, servidores e tags para organização dos endpoints.
+ */
 public class OpenAPIConfig {
-    // Configuração centralizada da documentação OpenAPI/Swagger.
+  
 }

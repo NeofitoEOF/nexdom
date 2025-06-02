@@ -30,7 +30,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 public class StockMovementController {
 
     @Autowired
-    private desafio.nexdom.desafio.service.StockMovementService stockMovementServiceCustom;
+    private desafio.nexdom.desafio.interfaces.IStockMovementService stockMovementServiceCustom;
 
   
     @GetMapping("/{id}")

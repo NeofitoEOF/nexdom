@@ -1,10 +1,12 @@
 package desafio.nexdom.desafio.interfaces;
 
+import desafio.nexdom.desafio.dto.StockMovementDTO;
 import desafio.nexdom.desafio.model.StockMovement;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 public interface IStockMovementService {
     Page<StockMovement> findAll(Pageable pageable);
@@ -13,4 +15,5 @@ public interface IStockMovementService {
     List<StockMovement> getMovementsByProduct(Long productId);
     StockMovement save(StockMovement movement);
     BigDecimal calculateProfit(Long productId);
+    Map<Long, List<StockMovementDTO>> findAllGroupedByProduct();
 }

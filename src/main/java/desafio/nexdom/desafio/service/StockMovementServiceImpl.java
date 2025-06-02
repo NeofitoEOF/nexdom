@@ -1,5 +1,6 @@
 package desafio.nexdom.desafio.service;
 
+import desafio.nexdom.desafio.dto.StockMovementDTO;
 import desafio.nexdom.desafio.exception.InsufficientStockException;
 import desafio.nexdom.desafio.exception.ProductNotFoundException;
 import desafio.nexdom.desafio.interfaces.IProductService;
@@ -13,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -52,18 +55,46 @@ public class StockMovementServiceImpl implements IStockMovementService {
 
     @Transactional
     public StockMovement save(StockMovement stockMovement) {
-        if (stockMovement.getProduct() != null && stockMovement.getProduct().getId() != null) {
-            Product product = productRepository.findById(stockMovement.getProduct().getId())
-                .orElseThrow(() -> new ProductNotFoundException(stockMovement.getProduct().getId()));
-            stockMovement.setProduct(product);
-        } else {
-            throw new IllegalArgumentException("Product ID is required for stock movement");
+        validateStockMovementData(stockMovement);
+        loadAndSetProduct(stockMovement);
+        setDefaultMovementDate(stockMovement);
+        validateStockMovement(stockMovement);
+        return stockMovementRepository.save(stockMovement);
+    }
+    
+    private void validateStockMovementData(StockMovement stockMovement) {
+        java.util.Objects.requireNonNull(stockMovement, "Stock movement cannot be null");
+        
+        java.util.List<String> validationErrors = new java.util.ArrayList<>();
+        
+        if (stockMovement.getProduct() == null || stockMovement.getProduct().getId() == null) {
+            validationErrors.add("Product ID is required for stock movement");
         }
+        
+        if (stockMovement.getQuantity() == null || stockMovement.getQuantity() <= 0) {
+            validationErrors.add("Quantity must be greater than zero");
+        }
+        
+        if (stockMovement.getMovementType() == null) {
+            validationErrors.add("Movement type is required");
+        }
+        
+        if (!validationErrors.isEmpty()) {
+            throw new IllegalArgumentException(String.join(", ", validationErrors));
+        }
+    }
+    
+    private void loadAndSetProduct(StockMovement stockMovement) {
+        Long productId = stockMovement.getProduct().getId();
+        Product product = productRepository.findById(productId)
+            .orElseThrow(() -> new ProductNotFoundException(productId));
+        stockMovement.setProduct(product);
+    }
+    
+    private void setDefaultMovementDate(StockMovement stockMovement) {
         if (stockMovement.getMovementDate() == null) {
             stockMovement.setMovementDate(java.time.LocalDateTime.now());
         }
-        validateStockMovement(stockMovement);
-        return stockMovementRepository.save(stockMovement);
     }
 
     @Transactional
@@ -95,5 +126,13 @@ public class StockMovementServiceImpl implements IStockMovementService {
                 .map(m -> m.getSaleValue().multiply(BigDecimal.valueOf(m.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         return totalRevenue.subtract(totalCost);
+    }
+    
+    @Transactional(readOnly = true)
+    public Map<Long, List<StockMovementDTO>> findAllGroupedByProduct() {
+        List<StockMovement> all = stockMovementRepository.findAll();
+        return all.stream()
+            .map(StockMovementDTO::fromEntity)
+            .collect(Collectors.groupingBy(StockMovementDTO::getProductId));
     }
 }
