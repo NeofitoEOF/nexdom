@@ -42,8 +42,7 @@ const inventoryByType = computed((): InventoryStatsByType => {
 <template>
   <div class="container mx-auto max-w-7xl px-2 sm:px-4 lg:px-8 py-8">
   <div class="mb-8">
-    <h1 class="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
-    <p class="text-gray-600">Overview Nexdom front-end</p>
+    <h1 class="text-3xl font-bold text-gray-900 mb-2">Painel</h1>
   </div>
     
     <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">

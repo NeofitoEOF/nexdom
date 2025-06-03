@@ -8,8 +8,16 @@ interface ProductFormState {
   description: string
   type: string
   supplierPrice: number
-  sellingPrice: number
   stock: number
+}
+
+export interface ProductFormErrors {
+  name?: string
+  description?: string
+  type?: string
+  supplierPrice?: string
+  stock?: string
+  submit?: string
 }
 
 export function useProductForm() {
@@ -26,7 +34,6 @@ export function useProductForm() {
     description: '',
     type: '',
     supplierPrice: 0,
-    sellingPrice: 0,
     stock: 0
   })
 
@@ -36,7 +43,6 @@ export function useProductForm() {
       description: '',
       type: '',
       supplierPrice: 0,
-      sellingPrice: 0,
       stock: 0
     }
     errors.value = {}
@@ -45,8 +51,10 @@ export function useProductForm() {
 
   const productTypes = PRODUCT_TYPES
 
-  const errors = ref<Record<string, string>>({})
+  const errors = ref<ProductFormErrors>({})
   const formSubmitted = ref(false)
+
+  const originalProduct = ref<any>(null)
 
   const loadProduct = async () => {
     if (!isEdit.value) return
@@ -54,12 +62,12 @@ export function useProductForm() {
     try {
       const product = await productStore.getProductById(productId)
       if (product) {
+        originalProduct.value = { ...product }
         form.value = {
           name: product.name,
           description: product.description,
           type: product.type,
           supplierPrice: product.supplierPrice,
-          sellingPrice: product.sellingPrice,
           stock: product.stock
         }
       }
@@ -92,10 +100,6 @@ export function useProductForm() {
       newErrors.supplierPrice = 'Preço de custo deve ser maior que zero'
     }
 
-    if (form.value.sellingPrice <= 0) {
-      newErrors.sellingPrice = 'Preço de venda deve ser maior que zero'
-    }
-
     if (!isEdit.value && form.value.stock < 0) {
       newErrors.stock = 'Estoque inicial não pode ser negativo'
     }
@@ -109,31 +113,39 @@ export function useProductForm() {
     formSubmitted.value = true
 
     if (!validateForm()) {
-      const firstErrorElement = document.querySelector('.error-message')
-      if (firstErrorElement) {
-        firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      }
       return
     }
 
     loading.value = true
 
     try {
-      if (isEdit.value) {
-        await productStore.updateProduct(productId, form.value)
+      let formData: any
+
+      if (isEdit.value && originalProduct.value) {
+        formData = {
+          ...originalProduct.value,
+          ...form.value
+        }
       } else {
-        await productStore.addProduct(form.value)
+        formData = {
+          ...form.value,
+          sellingPrice: 0 // Valor padrão para o backend em novos produtos
+        }
+      }
+
+      if (isEdit.value) {
+        await productStore.updateProduct(productId, formData)
+      } else {
+        await productStore.addProduct(formData)
       }
 
       router.push('/products')
     } catch (error) {
-      console.error('Error saving product:', error)
       errors.value.submit = error instanceof Error ? error.message : 'Erro ao salvar produto'
     } finally {
       loading.value = false
     }
   }
-
 
   return {
     form,

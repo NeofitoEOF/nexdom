@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * @component InventoryTransactions
+ * @description Componente para gerenciamento de movimentações de estoque (entradas e saídas)
+ * Permite adicionar novas movimentações, visualizar histórico e calcular estatísticas de lucro
+ */
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProductStore } from '../../stores/productStore'
@@ -10,9 +15,13 @@ import BaseSelect from '../../components/BaseSelect.vue'
 import BaseButton from '../../components/BaseButton.vue'
 import BaseForm from '../../components/BaseForm.vue'
 import { formatCurrency, formatNumber } from '../../utils/formatters'
-import type { Product, InventoryTransaction } from '../../interfaces'
+import type { Product, InventoryTransaction, ProductWithProfit } from '../../interfaces'
 
-const handleValueInput = (event: Event) => {
+/**
+ * Manipula a entrada de valores monetários, formatando-os adequadamente
+ * @param event - Evento de input
+ */
+const handleValueInput = (event: Event): void => {
   const input = (event.target as HTMLInputElement).value
   const numbers = input.replace(/\D/g, '')
   const numberValue = Number(numbers) / 100
@@ -20,7 +29,12 @@ const handleValueInput = (event: Event) => {
   formattedValue.value = numberValue ? `R$ ${numberValue.toFixed(2).replace('.', ',')}` : 'R$ 0'
 }
 
-function traduzirTipoMovimentacao(tipo: string): string {
+/**
+ * Traduz os tipos de movimentação para exibição na interface
+ * @param tipo - Tipo de movimentação (input/output/ENTRADA/SAIDA)
+ * @returns String traduzida para exibição
+ */
+const traduzirTipoMovimentacao = (tipo: string): string => {
   const traducoes: Record<string, string> = {
     'input': 'Entrada',
     'output': 'Saída',
@@ -35,6 +49,11 @@ function traduzirTipoMovimentacao(tipo: string): string {
 
 const router = useRouter()
 const productStore = useProductStore()
+
+/**
+ * Estado para controlar a visualização da análise de lucro (simplificada ou detalhada)
+ */
+const showSimpleView = ref(true)
 const inventoryStore = useInventoryStore()
 
 const selectedProductId = ref('')
@@ -58,13 +77,17 @@ const transactions = computed<InventoryTransaction[]>(() => {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 })
 
+/**
+ * Interface estendida para transações com informações do produto associado
+ */
 interface TransactionWithProductInfo extends Omit<InventoryTransaction, 'productId'> {
   productId: string;
-  productCode: string;
+  productCode?: string; // Tornar opcional já que nem sempre temos o código
   productName: string;
   productType: string;
   productNotes: string;
   value: number;
+  displayType?: string; // Tipo traduzido para exibição
 }
 
 const transactionsWithProductInfo = computed(() => {
@@ -75,12 +98,19 @@ const transactionsWithProductInfo = computed(() => {
       value: transaction.value || 0,
       productName: product ? product.name : '',
       productType: product ? product.type : '',
-      productNotes: product ? product.description : 'Produto Desconhecido'
+      productNotes: product ? product.description : 'Produto Desconhecido',
+      // Usar a função traduzirTipoMovimentacao para exibição consistente
+      displayType: traduzirTipoMovimentacao(transaction.type)
     } as TransactionWithProductInfo
   })
 })
 
+/**
+ * Processa a submissão do formulário de movimentação de estoque
+ * Valida os dados e envia para o backend
+ */
 const handleTransaction = async (): Promise<void> => {
+  // Validação dos campos do formulário
   if (!selectedProductId.value) {
     error.value = 'Por favor, selecione um produto'
     return
@@ -96,6 +126,7 @@ const handleTransaction = async (): Promise<void> => {
     return
   }
   
+  // Validação de estoque para saídas
   if (type.value === 'output' && selectedProduct.value) {
     if (selectedProduct.value.stock < quantity.value) {
       error.value = `Estoque insuficiente. Disponível: ${selectedProduct.value.stock}`
@@ -103,11 +134,13 @@ const handleTransaction = async (): Promise<void> => {
     }
   }
   
+  // Limpa mensagens anteriores e inicia o processo
   error.value = ''
   success.value = ''
   loading.value = true
   
   try {
+    // Prepara os dados da transação
     const newTransaction = {
       productId: selectedProductId.value,
       type: type.value,
@@ -116,14 +149,17 @@ const handleTransaction = async (): Promise<void> => {
       notes: notes.value
     }
     
+    // Envia para o store que se comunica com a API
     const result = await inventoryStore.addTransaction(newTransaction)
     
     if (result.success) {
+      // Feedback de sucesso e reset do formulário
       success.value = `${type.value === 'input' ? 'Adicionado' : 'Removido'} ${quantity.value} itens com sucesso`
       selectedProductId.value = ''
       quantity.value = 1
       notes.value = ''
       value.value = 0
+      formattedValue.value = 'R$ 0'
       await productStore.fetchProducts()
     } else {
       error.value = result.message || 'Ocorreu um erro'
@@ -148,12 +184,18 @@ const viewProduct = (productId: string | number): void => {
   router.push(`/products/${productId}`)
 }
 
-const productsWithProfit = computed(() => {
+/**
+ * Produtos com dados de lucro calculados
+ */
+const productsWithProfit = computed<ProductWithProfit[]>(() => {
   return inventoryStore.getProductsWithProfitData
 })
 
-const productsByType = computed(() => {
-  const result: Record<string, any[]> = {}
+/**
+ * Produtos agrupados por tipo para análise de lucro
+ */
+const productsByType = computed<Record<string, ProductWithProfit[]>>(() => {
+  const result: Record<string, ProductWithProfit[]> = {}
   
   productsWithProfit.value.forEach(product => {
     if (!result[product.type]) {
@@ -165,40 +207,104 @@ const productsByType = computed(() => {
   return result
 })
 
-const subtotalByType = computed(() => {
-  const result: Record<string, { totalAvailable: number, totalSold: number, totalProfit: number }> = {}
+/**
+ * Interface para os subtotais por tipo de produto
+ */
+interface ProfitSubtotal {
+  totalAvailable: number;
+  totalSold: number;
+  totalSalesValue: number;
+  totalCost: number;
+  totalProfit: number;
+}
+
+/**
+ * Calcula subtotais por tipo de produto para análise de lucro
+ */
+const subtotalByType = computed<Record<string, ProfitSubtotal>>(() => {
+  const result: Record<string, ProfitSubtotal> = {}
   
   Object.entries(productsByType.value).forEach(([type, products]) => {
-    const totalAvailable = products.reduce((sum, p: any) => sum + p.stock, 0)
-    const totalSold = products.reduce((sum, p: any) => sum + p.totalSold, 0)
-    const totalProfit = products.reduce((sum, p: any) => sum + p.totalProfit, 0)
+    const totalAvailable = products.reduce((sum, p) => sum + p.stock, 0)
+    const totalSold = products.reduce((sum, p) => sum + p.totalSold, 0)
+    const totalSalesValue = products.reduce((sum, p) => sum + p.totalSalesValue, 0)
+    const totalCost = products.reduce((sum, p) => sum + p.totalCost, 0)
+    const totalProfit = products.reduce((sum, p) => sum + p.totalProfit, 0)
     
-    result[type] = { totalAvailable, totalSold, totalProfit }
+    result[type] = { 
+      totalAvailable, 
+      totalSold, 
+      totalSalesValue,
+      totalCost,
+      totalProfit 
+    }
   })
   
   return result
 })
 
+/**
+ * Total de produtos disponíveis em estoque
+ */
 const totalAvailable = computed(() => {
   return Object.values(subtotalByType.value).reduce((sum, data) => sum + data.totalAvailable, 0)
 })
 
+/**
+ * Total de produtos vendidos
+ */
 const totalSold = computed(() => {
   return Object.values(subtotalByType.value).reduce((sum, data) => sum + data.totalSold, 0)
 })
 
+/**
+ * Total de valor de vendas
+ */
+const totalSalesValue = computed(() => {
+  return Object.values(subtotalByType.value).reduce((sum, data) => sum + data.totalSalesValue, 0)
+})
+
+/**
+ * Total de custo (baseado no preço do fornecedor)
+ */
+const totalCost = computed(() => {
+  return Object.values(subtotalByType.value).reduce((sum, data) => sum + data.totalCost, 0)
+})
+
+/**
+ * Lucro total
+ */
 const totalProfit = computed(() => {
   return Object.values(subtotalByType.value).reduce((sum, data) => sum + data.totalProfit, 0)
 })
 
-onMounted(async (): Promise<void> => {
+/**
+ * Margem de lucro percentual média
+ */
+const averageProfitMargin = computed(() => {
+  return totalCost.value > 0 ? (totalProfit.value / totalCost.value) * 100 : 0
+})
+
+/**
+ * Inicializa os dados necessários ao montar o componente
+ */
+onMounted(async () => {
+  console.log('Montando componente InventoryTransactions')
+  loading.value = true
+  
   try {
+    // Carrega produtos e transações em paralelo para melhor performance
     await Promise.all([
       productStore.fetchProducts(),
-      inventoryStore.fetchTransactions()
+      inventoryStore.initialize() // Usa o método initialize que tem retry embutido
     ])
+    
+    console.log('Dados carregados com sucesso')
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Erro ao carregar dados iniciais'
+    console.error('Erro ao inicializar dados:', err)
+    error.value = 'Erro ao carregar dados. Por favor, recarregue a página.'
+  } finally {
+    loading.value = false
   }
 })
 
@@ -319,17 +425,96 @@ onMounted(async (): Promise<void> => {
           </button>
         </div>
       </div>
-      
-      <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow border">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-lg font-semibold text-gray-900">Histórico de Movimentações</h2>
-          <button 
-            @click="inventoryStore.fetchTransactions()"
-            class="text-sm text-blue-600 hover:text-blue-800"
-            :disabled="inventoryStore.isLoading"
-          >
-            {{ inventoryStore.isLoading ? 'Carregando...' : 'Atualizar' }}
-          </button>
+      <!-- ... outros cards da grid aqui ... -->
+    </div>
+    <div class="py-6 h-screen overflow-y-auto">
+        <div class="w-full mx-auto px-2 sm:px-4 lg:px-6">
+          <div class="mb-6 flex flex-wrap justify-between items-center gap-4">
+            <h1 class="text-2xl font-semibold text-gray-900">Análise de Inventário</h1>
+            <button 
+              @click="inventoryStore.fetchTransactions()"
+              class="text-sm text-blue-600 hover:text-blue-800"
+              :disabled="inventoryStore.isLoading"
+            >
+              {{ inventoryStore.isLoading ? 'Carregando...' : 'Atualizar' }}
+            </button>
+          </div>
+          
+          <div v-if="inventoryStore.isLoading" class="text-center py-4 text-gray-500">
+            Carregando movimentações...
+          </div>
+          
+          <div v-else-if="inventoryStore.error" class="text-center py-4 text-red-500">
+            Erro: {{ inventoryStore.error }}
+          </div>
+          
+          <div v-else class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Data
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Produto
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tipo
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Quantidade
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Valor de Venda
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Descrição
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr v-for="transaction in transactionsWithProductInfo" :key="transaction.id" class="hover:bg-gray-50">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {{ formatDate(transaction.date) }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <a 
+                      href="#"
+                      class="text-sm font-medium text-blue-600 hover:text-blue-900"
+                    >
+                      {{ transaction.productName }}
+                    </a>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span 
+                      class="px-2 py-1 text-xs font-medium rounded-full"
+                      :class="{
+                        'bg-green-100 text-green-800': transaction.type === 'input',
+                        'bg-red-100 text-red-800': transaction.type === 'output'
+                      }"
+                    >
+                      {{ transaction.type === 'input' ? 'Entrada' : 'Saída' }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {{ transaction.quantity }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {{ formatCurrency(transaction.value) }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {{ transaction.notes || '-' }}
+                  </td>
+                </tr>
+                
+                <tr v-if="transactionsWithProductInfo.length === 0">
+                  <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                    Nenhuma movimentação encontrada.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
         
         <div v-if="inventoryStore.isLoading" class="text-center py-4 text-gray-500">
@@ -408,82 +593,4 @@ onMounted(async (): Promise<void> => {
           </table>
         </div>
       </div>
-      <div class="mt-10 bg-white p-6 rounded-lg shadow border">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-lg font-semibold text-gray-900">Análise de Lucro por Produto</h2>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade Disponível</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantidade Vendida</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor de Venda</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor do Fornecedor</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lucro Unitário</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <span class="inline-flex items-center">
-                    Lucro Total
-                    <span class="ml-1 cursor-pointer" title="Lucro Total = (Valor de Venda - Valor do Fornecedor) x Quantidade Vendida">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" />
-                      </svg>
-                    </span>
-                  </span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <template v-for="(group, type) in productsByType">
-                <tr class="bg-gray-100">
-                  <td colspan="8" class="px-4 py-2 font-semibold text-gray-700">Tipo: {{ type }}</td>
-                </tr>
-                <tr v-for="product in group" :key="product.id" class="hover:bg-gray-50">
-                  <td class="px-4 py-2 whitespace-nowrap">
-                    {{ product.name }}
-                    <span v-if="product.stock === 0" class="ml-2 px-2 py-0.5 rounded bg-red-100 text-red-700 text-xs font-semibold">Esgotado</span>
-                    <span v-else-if="product.totalSold === 0" class="ml-2 px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 text-xs font-semibold">Sem vendas</span>
-                  </td>
-                  <td class="px-4 py-2 whitespace-nowrap">{{ product.type }}</td>
-                  <td class="px-4 py-2 whitespace-nowrap text-center">
-                    <span class="inline-block min-w-[3em] px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs font-semibold">{{ formatNumber(product.stock, 0) }}</span>
-                  </td>
-                  <td class="px-4 py-2 whitespace-nowrap text-center">
-                    <span class="inline-block min-w-[3em] px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs font-semibold">{{ formatNumber(product.totalSold, 0) }}</span>
-                  </td>
-                  <td class="px-4 py-2 whitespace-nowrap">{{ formatCurrency(product.sellingPrice) }}</td>
-                  <td class="px-4 py-2 whitespace-nowrap">{{ formatCurrency(product.supplierPrice) }}</td>
-                  <td class="px-4 py-2 whitespace-nowrap">{{ formatCurrency(product.sellingPrice - product.supplierPrice) }}</td>
-                  <td class="px-4 py-2 whitespace-nowrap font-semibold">{{ formatCurrency(product.totalProfit) }}
-                    <div v-if="product.totalSold + product.stock > 0" class="w-full h-2 bg-gray-200 rounded mt-1">
-                      <div
-                        class="h-2 rounded bg-green-400"
-                        :style="{ width: ((product.totalSold / (product.totalSold + product.stock)) * 100).toFixed(0) + '%' }"
-                      ></div>
-                    </div>
-                  </td>
-                </tr>
-                <tr class="bg-gray-50 font-semibold">
-                  <td colspan="2" class="px-4 py-2 text-right">Subtotal do tipo:</td>
-                  <td class="px-4 py-2 text-center">{{ formatNumber(subtotalByType[type].totalAvailable, 0) }}</td>
-                  <td class="px-4 py-2 text-center">{{ formatNumber(subtotalByType[type].totalSold, 0) }}</td>
-                  <td colspan="3"></td>
-                  <td class="px-4 py-2">{{ formatCurrency(subtotalByType[type].totalProfit) }}</td>
-                </tr>
-              </template>
-              <tr class="bg-gray-200 font-bold">
-                <td colspan="2" class="px-4 py-2 text-right">Total Geral:</td>
-                <td class="px-4 py-2 text-center">{{ formatNumber(totalAvailable, 0) }}</td>
-                <td class="px-4 py-2 text-center">{{ formatNumber(totalSold, 0) }}</td>
-                <td colspan="3"></td>
-                <td class="px-4 py-2">{{ formatCurrency(totalProfit) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
+  </template>

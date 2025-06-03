@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProductStore } from '../../stores/productStore'
 import ProductTable from '../../components/ProductTable.vue'
+import ProductEditModal from '../../components/ProductEditModal.vue'
 import BaseInput from '../../components/BaseInput.vue'
 import BaseSelect from '../../components/BaseSelect.vue'
 import BaseButton from '../../components/BaseButton.vue'
@@ -13,7 +14,11 @@ const loading = ref(false)
 const error = ref('')
 const searchQuery = ref('')
 const selectedType = ref('')
-const refreshTrigger = ref(0) 
+const refreshTrigger = ref(0)
+
+// Estado para o modal de edição
+const showEditModal = ref(false)
+const selectedProduct = ref<Product | null>(null)
 const loadProducts = async (): Promise<void> => {
   loading.value = true
   error.value = ''
@@ -57,7 +62,8 @@ const viewProduct = (product: Product): void => {
   router.push(`/products/${product.id}`)
 }
 const editProduct = (product: Product): void => {
-  router.push(`/products/${product.id}/edit`)
+  selectedProduct.value = product
+  showEditModal.value = true
 }
 
 const deleteProduct = async (product: Product): Promise<void> => {
@@ -117,6 +123,14 @@ const refreshProducts = (): void => {
             Nenhum produto encontrado.
             <button @click="createProduct" class="text-primary-600 hover:text-primary-900 font-medium">Adicionar novo produto</button>.
           </div>
+          
+          <!-- Modal de edição -->
+          <ProductEditModal 
+            :show="showEditModal" 
+            :product="selectedProduct" 
+            @close="showEditModal = false" 
+            @updated="refreshProducts()" 
+          />
         </div>
       </div>
     </div>

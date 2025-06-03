@@ -5,6 +5,7 @@ import { useProductStore } from './productStore'
 import { InventoryTransaction, ProductWithProfit } from '../interfaces'
 import { ApiGroupedMovement, UIGroupedMovement } from '../interfaces'
 import { stockMovementsAPI } from '../services/api'
+import { mapTransactionFromBackend } from '../services/adapters'
 
 export const useInventoryStore = defineStore('inventory', () => {
   const transactions = ref<InventoryTransaction[]>([])
@@ -13,62 +14,68 @@ export const useInventoryStore = defineStore('inventory', () => {
 
   const productStore = useProductStore()
 
-  async function fetchTransactions() {
+  /**
+   * Busca todas as transações de estoque do backend
+   * @returns Promise<boolean> - Indica se a operação foi bem-sucedida
+   */
+  async function fetchTransactions(): Promise<boolean> {
     isLoading.value = true
     error.value = null
     try {
+      console.log('Buscando transações do servidor...')
       const response = await stockMovementsAPI.getAll()
       const data = response.data as any
       
       if (data && Array.isArray(data)) {
-        transactions.value = data.map((item: any) => ({
-          id: String(item.id),
-          productId: String(item.productId),
-          type: item.movementType === 'ENTRADA' ? 'input' : 'output',
-          quantity: item.quantity,
-          value: item.saleValue || item.value,
-          date: new Date(item.createdAt || new Date()),
-          notes: item.description || item.notes
-        }))
+        console.log(`Encontradas ${data.length} transações`)
+        transactions.value = data.map((item: any) => mapTransactionFromBackend(item))
+        return true
+      } else {
+        console.warn('Resposta do servidor não contém um array de transações:', data)
+        transactions.value = []
+        return false
       }
     } catch (err: any) {
       let errorMessage = 'Erro ao carregar transações'
       
       if (err.response) {
         errorMessage = `Erro ${err.response.status}: ${err.response.data?.message || 'Falha ao carregar dados'}`
-
       } else if (err.request) {
         errorMessage = 'Servidor não respondeu à requisição'
-
       } else {
         errorMessage = err.message || errorMessage
-
       }
       
+      console.error('Erro ao buscar transações:', errorMessage)
       error.value = errorMessage
-
+      return false
     } finally {
       isLoading.value = false
     }
   }
 
+  /**
+   * Adiciona uma nova transação de estoque
+   * @param transaction - Dados da transação a ser adicionada
+   * @returns Objeto com status de sucesso e mensagem
+   */
   async function addTransaction(transaction: any) {
     isLoading.value = true
     error.value = null
 
     try {
+      // Validação de estoque para saídas
       if (transaction.type === 'output') {
         const stockResult = productStore.updateStock(transaction.productId, -transaction.quantity)
         if (!stockResult.success) {
           error.value = stockResult.message || 'Erro ao validar estoque'
           return { success: false, message: error.value }
         }
-      } else {
-        productStore.updateStock(transaction.productId, transaction.quantity)
       }
 
+      // Preparar a nova transação
       const newTransaction: InventoryTransaction = {
-        id: uuidv4(),
+        id: uuidv4(), // ID temporário
         productId: transaction.productId,
         type: transaction.type,
         quantity: transaction.quantity,
@@ -77,18 +84,40 @@ export const useInventoryStore = defineStore('inventory', () => {
         date: new Date()
       }
 
-      transactions.value.push(newTransaction)
-
+      // Enviar para o backend primeiro
       try {
         const response = await stockMovementsAPI.create(newTransaction)
+        
         if (response.data && response.data.id) {
-          const index = transactions.value.findIndex(t => t.id === newTransaction.id)
-          if (index !== -1) {
-            transactions.value[index].id = response.data.id
+          // Substituir o ID temporário pelo ID do backend
+          newTransaction.id = response.data.id
+          
+          // Adicionar ao array local apenas após confirmação do backend
+          transactions.value.push(newTransaction)
+          
+          // Atualizar o estoque local após confirmação do backend
+          if (transaction.type === 'input') {
+            productStore.updateStock(transaction.productId, transaction.quantity)
           }
+          
+          return { success: true }
+        } else {
+          throw new Error('Resposta do servidor não contém ID da transação')
         }
       } catch (apiError: any) {
-
+        console.error('Erro na API ao criar transação:', apiError)
+        let errorMessage = 'Erro ao salvar transação no servidor'
+        
+        if (apiError.response) {
+          errorMessage = `Erro ${apiError.response.status}: ${apiError.response.data?.message || 'Falha ao salvar no servidor'}`
+        } else if (apiError.request) {
+          errorMessage = 'Servidor não respondeu à requisição'
+        } else {
+          errorMessage = apiError.message || errorMessage
+        }
+        
+        error.value = errorMessage
+        return { success: false, message: errorMessage }
       }
 
       return { success: true }
@@ -192,32 +221,69 @@ export const useInventoryStore = defineStore('inventory', () => {
     }).sort((a, b) => b.date.getTime() - a.date.getTime())
   })
 
+  /**
+   * Calcula dados de lucro detalhados para cada produto
+   * @returns Array de produtos com dados de lucro e performance
+   */
   const getProductsWithProfitData = computed(() => {
     const allProducts = productStore.products
     const result: ProductWithProfit[] = []
 
     allProducts.forEach(product => {
+      // Todas as transações deste produto
       const productTransactions = transactions.value.filter(
         t => String(t.productId) === String(product.id)
       )
-
-      const totalSold = productTransactions
-        .filter(t => t.type === 'output')
-        .reduce((sum, t) => sum + t.quantity, 0)
-
-      const totalSalesValue = productTransactions
-        .filter(t => t.type === 'output')
-        .reduce((sum, t) => sum + (t.value || 0), 0)
-
-      const totalProfit = totalSalesValue > 0
-        ? totalSalesValue - (totalSold * product.supplierPrice)
-        : totalSold * (product.sellingPrice - product.supplierPrice)
-
+      
+      // Transações de saída (vendas)
+      const outputTransactions = productTransactions.filter(t => t.type === 'output')
+      
+      // Quantidade total vendida
+      const totalSold = outputTransactions.reduce((sum, t) => sum + t.quantity, 0)
+      
+      // Valor total das vendas (considerando o valor de cada transação multiplicado pela quantidade)
+      const totalSalesValue = outputTransactions.reduce((sum, t) => sum + (t.value || 0) * t.quantity, 0)
+      
+      // Custo total (baseado no preço do fornecedor)
+      const totalCost = totalSold * product.supplierPrice
+      
+      // Lucro total
+      const totalProfit = totalSalesValue - totalCost
+      
+      // Preço médio de venda (se houver vendas)
+      const averageSellingPrice = totalSold > 0 ? totalSalesValue / totalSold : product.sellingPrice
+      
+      // Margem de lucro por unidade
+      const unitProfit = averageSellingPrice - product.supplierPrice
+      
+      // Margem de lucro percentual
+      const profitMarginPercent = product.supplierPrice > 0 
+        ? (unitProfit / product.supplierPrice) * 100 
+        : 0
+      
+      // Retorno sobre investimento (ROI)
+      const roi = totalCost > 0 
+        ? (totalProfit / totalCost) * 100 
+        : 0
+      
+      // Valor do estoque atual
+      const currentStockValue = product.stock * product.supplierPrice
+      
+      // Potencial de lucro do estoque atual
+      const potentialProfit = product.stock * unitProfit
+      
       result.push({
         ...product,
         totalSold,
         totalSalesValue,
-        totalProfit
+        totalCost,
+        totalProfit,
+        averageSellingPrice,
+        unitProfit,
+        profitMarginPercent,
+        roi,
+        currentStockValue,
+        potentialProfit
       })
     })
 
@@ -257,8 +323,21 @@ export const useInventoryStore = defineStore('inventory', () => {
     return result
   })
 
-  async function initialize() {
-    await fetchTransactions()
+  /**
+   * Inicializa o store carregando dados necessários
+   * @returns Promise<void>
+   */
+  async function initialize(): Promise<void> {
+    console.log('Inicializando inventoryStore...')
+    const success = await fetchTransactions()
+    
+    if (!success) {
+      console.warn('Falha ao inicializar o inventoryStore. Tentando novamente em 3 segundos...')
+      // Tentar novamente após 3 segundos em caso de falha
+      setTimeout(() => {
+        fetchTransactions()
+      }, 3000)
+    }
   }
 
 
