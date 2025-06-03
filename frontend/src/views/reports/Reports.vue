@@ -17,12 +17,10 @@ onMounted(async () => {
   await inventoryStore.fetchMovementsGroupedByProduct()
 })
 
-// --- Simulação de Projeção de Lucro ---
 const simulacaoProdutoId = ref('')
 const simulacaoQtd = ref(1)
 const simulacaoPreco = ref(0)
 
-// Atualiza o preço simulado para o preço de venda do produto ao trocar produto
 watch(simulacaoProdutoId, (id) => {
   const produto = produtosLucroBackend.value.find(p => p.id === id)
   simulacaoPreco.value = produto ? produto.receitaTotal && produto.qtdVendida > 0 ? produto.receitaTotal / produto.qtdVendida : 0 : 0
@@ -32,14 +30,12 @@ const simulacaoResultado = computed(() => {
   const produto = produtosLucroBackend.value.find(p => p.id === simulacaoProdutoId.value)
   if (!produto || simulacaoQtd.value <= 0 || simulacaoPreco.value < 0) return null
   const receita = simulacaoPreco.value * simulacaoQtd.value
-  // custo médio estimado por unidade
   const custoMedio = produto.qtdVendida > 0 ? (produto.receitaTotal - produto.lucroTotal) / produto.qtdVendida : 0
   const custoTotal = custoMedio * simulacaoQtd.value
   const lucro = receita - custoTotal
   const margem = custoTotal > 0 ? ((lucro / custoTotal) * 100).toFixed(1) : '0.0'
   return { receita, lucro, margem }
 })
-// --- Fim Simulação ---
 
 const selectedType = ref('')
 const sortField = ref('profit')
@@ -47,10 +43,7 @@ const sortDirection = ref('desc')
 
 const productTypes = computed(() => ['', ...productStore.getProductTypes])
 
-/**
- * Subtotais por tipo de produto (estoque, vendido, receita, custo, lucro, margem)
- * @returns Record<string, ProfitSubtotal>
- */
+
 interface ProfitSubtotal {
   totalAvailable: number;
   totalSold: number;
@@ -59,7 +52,6 @@ interface ProfitSubtotal {
   totalProfit: number;
 }
 
-// Subtotais por tipo de produto com ajustes de sinais e limites
 const subtotalByType = computed<Record<string, ProfitSubtotal & { margin: string }>>(() => {
   const result: Record<string, ProfitSubtotal & { margin: string }> = {}
   const products = productStore.products
@@ -69,21 +61,18 @@ const subtotalByType = computed<Record<string, ProfitSubtotal & { margin: string
     return acc
   }, {})
   Object.entries(grouped).forEach(([type, products]) => {
-    // Soma estoques, vendidos, receita, custo e lucro
     let totalAvailable = products.reduce((sum, p) => sum + (p.stock ?? 0), 0)
     let totalSold = products.reduce((sum, p) => sum + (p.totalSold ?? 0), 0)
     let totalSalesValue = products.reduce((sum, p) => sum + (p.totalSalesValue ?? 0), 0)
     let totalCost = products.reduce((sum, p) => sum + (p.totalCost ?? 0), 0)
     let totalProfit = products.reduce((sum, p) => sum + (p.totalProfit ?? 0), 0)
 
-    // Ajustes de sinais: nunca negativos
     totalAvailable = Math.max(totalAvailable, 0)
     totalSold = Math.max(totalSold, 0)
     totalSalesValue = Math.max(totalSalesValue, 0)
     totalCost = Math.max(totalCost, 0)
     totalProfit = Math.max(totalProfit, 0)
 
-    // Margem (%) limitada a 9999, e mostra '—' se custo zero
     let margin: string
     if (totalCost > 0) {
       const rawMargin = (totalProfit / totalCost) * 100
@@ -97,9 +86,7 @@ const subtotalByType = computed<Record<string, ProfitSubtotal & { margin: string
   return result
 })
 
-// Atualize também o template para usar subtotal.margin
 
-// --- Helpers para Análise de Lucro por Produto ---
 import { ref as vueRef } from 'vue'
 
 const searchQuery = vueRef('')
@@ -168,7 +155,6 @@ interface TotalMetrics {
 }
 
 const produtosLucroBackend = computed<ProdutoLucro[]>(() => {
-  // Usar os campos do store (já adaptados pelo fetchProducts)
   const produtos = productStore.products
   const transacoes: MovimentoEstoque[] = inventoryStore.transactions as any[]
 
@@ -181,7 +167,6 @@ const produtosLucroBackend = computed<ProdutoLucro[]>(() => {
     const supplierValue = produto.supplierPrice || 0
     const qtdEstoque = produto.stock || 0
 
-    // Movimentações desse produto
     const entradas = transacoes.filter(t => String(t.productId) === String(id) && (t.type === 'input'))
     const saidas = transacoes.filter(t => String(t.productId) === String(id) && (t.type === 'output'))
 
@@ -190,9 +175,7 @@ const produtosLucroBackend = computed<ProdutoLucro[]>(() => {
     const qtdDisponivel = qtdEntradas - qtdSaidas
     const qtdVendida = qtdSaidas
 
-    // Receita total: soma de value * quantity nas saídas
     const receitaTotal = saidas.reduce((sum, t) => sum + ((t.value || 0) * (t.quantity || 0)), 0)
-    // Custo total: soma de supplierValue * quantity nas entradas
     const custoTotal = entradas.reduce((sum, t) => sum + (supplierValue * (t.quantity || 0)), 0)
     const lucroUnitario = qtdVendida > 0 ? (receitaTotal - custoTotal) / qtdVendida : 0
     const lucroTotal = receitaTotal - custoTotal
@@ -215,7 +198,6 @@ const produtosLucroBackend = computed<ProdutoLucro[]>(() => {
 const inventoryByType = computed(() => {
   return inventoryStore.getInventoryStatsByType
 })
-// Expose inventoryByType to the template
 defineExpose({ inventoryByType })
 
 const setSorting = (field: string) => {
@@ -252,7 +234,6 @@ function safeFormatNumber(val: any, decimals: number = 2): string {
         <p class="text-lg text-gray-600">Análises e insights sobre seu estoque</p>
       </div>
 
-      <!-- Simulação de Projeção de Lucro -->
       <div class="bg-white rounded-xl shadow border p-6 mb-10">
         <h2 class="text-lg font-bold text-gray-900 mb-4">Simulação de Projeção de Lucro</h2>
         <div class="flex flex-col md:flex-row gap-4 items-end">
@@ -287,12 +268,9 @@ function safeFormatNumber(val: any, decimals: number = 2): string {
           </div>
         </div>
       </div>
-      <!-- Fim Simulação de Projeção -->
-
-      <!-- Relatórios de Destaque -->
+    
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
 
-      <!-- Produtos com maior lucro -->
       <div class="bg-white rounded-xl shadow border p-6 mb-10">
         <h2 class="text-lg font-bold text-gray-900 mb-4">Produtos com maior lucro</h2>
         <div class="overflow-x-auto">
@@ -323,9 +301,7 @@ function safeFormatNumber(val: any, decimals: number = 2): string {
           </table>
         </div>
       </div>
-      <!-- Fim Produtos com maior lucro -->
-
-        <!-- Produto mais lucrativo -->
+      
         <div class="bg-white rounded-xl shadow border p-6 flex flex-col items-center">
           <div class="text-sm font-semibold text-gray-500 mb-1">Produto mais lucrativo</div>
           <div v-if="produtosLucroBackend.length" class="text-center">
@@ -340,13 +316,7 @@ function safeFormatNumber(val: any, decimals: number = 2): string {
           <div v-else class="text-gray-400">Sem dados</div>
         </div>
       </div>
-      <!-- Fim dos relatórios de destaque -->
-
-      <!-- Bloco de cartões de totais/subtotais e análise de lucro (migrado do InventoryTransactions.vue) -->
-      
-      <!-- Fim do bloco migrado -->
-
-      <!-- Subtotais por Tipo de Produto -->
+   
       <div class="bg-white rounded-xl shadow border p-6 mb-10">
         <h2 class="text-lg font-bold text-gray-900 mb-4">Subtotais por Tipo de Produto</h2>
         <div class="overflow-x-auto">

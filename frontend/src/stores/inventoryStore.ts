@@ -73,9 +73,8 @@ export const useInventoryStore = defineStore('inventory', () => {
         }
       }
 
-      // Preparar a nova transação
       const newTransaction: InventoryTransaction = {
-        id: uuidv4(), // ID temporário
+        id: uuidv4(),
         productId: transaction.productId,
         type: transaction.type,
         quantity: transaction.quantity,
@@ -84,18 +83,14 @@ export const useInventoryStore = defineStore('inventory', () => {
         date: new Date()
       }
 
-      // Enviar para o backend primeiro
       try {
         const response = await stockMovementsAPI.create(newTransaction)
         
         if (response.data && response.data.id) {
-          // Substituir o ID temporário pelo ID do backend
           newTransaction.id = response.data.id
           
-          // Adicionar ao array local apenas após confirmação do backend
           transactions.value.push(newTransaction)
           
-          // Atualizar o estoque local após confirmação do backend
           if (transaction.type === 'input') {
             productStore.updateStock(transaction.productId, transaction.quantity)
           }
@@ -221,55 +216,40 @@ export const useInventoryStore = defineStore('inventory', () => {
     }).sort((a, b) => b.date.getTime() - a.date.getTime())
   })
 
-  /**
-   * Calcula dados de lucro detalhados para cada produto
-   * @returns Array de produtos com dados de lucro e performance
-   */
+ 
   const getProductsWithProfitData = computed(() => {
     const allProducts = productStore.products
     const result: ProductWithProfit[] = []
 
     allProducts.forEach(product => {
-      // Todas as transações deste produto
       const productTransactions = transactions.value.filter(
         t => String(t.productId) === String(product.id)
       )
       
-      // Transações de saída (vendas)
       const outputTransactions = productTransactions.filter(t => t.type === 'output')
       
-      // Quantidade total vendida
       const totalSold = outputTransactions.reduce((sum, t) => sum + t.quantity, 0)
       
-      // Valor total das vendas (considerando o valor de cada transação multiplicado pela quantidade)
       const totalSalesValue = outputTransactions.reduce((sum, t) => sum + (t.value || 0) * t.quantity, 0)
       
-      // Custo total (baseado no preço do fornecedor)
       const totalCost = totalSold * product.supplierPrice
       
-      // Lucro total
       const totalProfit = totalSalesValue - totalCost
       
-      // Preço médio de venda (se houver vendas)
       const averageSellingPrice = totalSold > 0 ? totalSalesValue / totalSold : product.sellingPrice
       
-      // Margem de lucro por unidade
       const unitProfit = averageSellingPrice - product.supplierPrice
       
-      // Margem de lucro percentual
       const profitMarginPercent = product.supplierPrice > 0 
         ? (unitProfit / product.supplierPrice) * 100 
         : 0
       
-      // Retorno sobre investimento (ROI)
       const roi = totalCost > 0 
         ? (totalProfit / totalCost) * 100 
         : 0
       
-      // Valor do estoque atual
       const currentStockValue = product.stock * product.supplierPrice
       
-      // Potencial de lucro do estoque atual
       const potentialProfit = product.stock * unitProfit
       
       result.push({
@@ -323,17 +303,13 @@ export const useInventoryStore = defineStore('inventory', () => {
     return result
   })
 
-  /**
-   * Inicializa o store carregando dados necessários
-   * @returns Promise<void>
-   */
+ 
   async function initialize(): Promise<void> {
     console.log('Inicializando inventoryStore...')
     const success = await fetchTransactions()
     
     if (!success) {
       console.warn('Falha ao inicializar o inventoryStore. Tentando novamente em 3 segundos...')
-      // Tentar novamente após 3 segundos em caso de falha
       setTimeout(() => {
         fetchTransactions()
       }, 3000)
@@ -350,7 +326,6 @@ export const useInventoryStore = defineStore('inventory', () => {
         productId: movement.productId,
         productName: movement.productName,
         quantity: movement.quantity,
-        // Mapeia movementType para type
         type: movement.movementType,
         value: movement.value,
         date: movement.date,
@@ -366,7 +341,6 @@ export const useInventoryStore = defineStore('inventory', () => {
     error.value = null
     try {
       const response = await stockMovementsAPI.getGroupedByProduct()
-      // Primeiro convertemos para unknown para evitar erros de tipagem
       const apiData = response.data as unknown as Record<string, ApiGroupedMovement[]>
       groupedMovements.value = mapApiMovementsToUI(apiData)
     } catch (err: any) {

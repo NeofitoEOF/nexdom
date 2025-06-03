@@ -89,15 +89,12 @@ export const useProductStore = defineStore('products', () => {
       let errorMessage = 'Falha ao criar produto'
       
       if (err.response) {
-        // Erro de resposta HTTP
         errorMessage = `Erro ${err.response.status}: ${err.response.data?.message || 'Falha na requisição'}`
 
       } else if (err.request) {
-        // Sem resposta do servidor
         errorMessage = 'Servidor não respondeu à requisição'
 
       } else {
-        // Outro erro
         errorMessage = err.message || errorMessage
 
       }

@@ -22,8 +22,8 @@ const totalProducts = computed((): number => productStore.products.length)
 const lowStockProducts = computed((): number => productStore.products.filter(p => p.stock < 5).length)
 
 const totalInventoryValue = computed((): number => {
-  return productStore.products.reduce((total, product) => {
-    return total + (product.supplierPrice * product.stock)
+  return inventoryStore.getProductsWithProfitData.reduce((total, product) => {
+    return total + (product.currentStockValue || 0)
   }, 0)
 })
 

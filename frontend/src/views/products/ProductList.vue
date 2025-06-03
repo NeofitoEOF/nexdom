@@ -16,7 +16,6 @@ const searchQuery = ref('')
 const selectedType = ref('')
 const refreshTrigger = ref(0)
 
-// Estado para o modal de edição
 const showEditModal = ref(false)
 const selectedProduct = ref<Product | null>(null)
 const loadProducts = async (): Promise<void> => {
