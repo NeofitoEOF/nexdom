@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProductStore } from '../../stores/productStore'
 import { useInventoryStore } from '../../stores/inventoryStore'
@@ -16,6 +16,30 @@ onMounted(async () => {
   await inventoryStore.fetchTransactions()
   await inventoryStore.fetchMovementsGroupedByProduct()
 })
+
+// --- Simulação de Projeção de Lucro ---
+const simulacaoProdutoId = ref('')
+const simulacaoQtd = ref(1)
+const simulacaoPreco = ref(0)
+
+// Atualiza o preço simulado para o preço de venda do produto ao trocar produto
+watch(simulacaoProdutoId, (id) => {
+  const produto = produtosLucroBackend.value.find(p => p.id === id)
+  simulacaoPreco.value = produto ? produto.receitaTotal && produto.qtdVendida > 0 ? produto.receitaTotal / produto.qtdVendida : 0 : 0
+})
+
+const simulacaoResultado = computed(() => {
+  const produto = produtosLucroBackend.value.find(p => p.id === simulacaoProdutoId.value)
+  if (!produto || simulacaoQtd.value <= 0 || simulacaoPreco.value < 0) return null
+  const receita = simulacaoPreco.value * simulacaoQtd.value
+  // custo médio estimado por unidade
+  const custoMedio = produto.qtdVendida > 0 ? (produto.receitaTotal - produto.lucroTotal) / produto.qtdVendida : 0
+  const custoTotal = custoMedio * simulacaoQtd.value
+  const lucro = receita - custoTotal
+  const margem = custoTotal > 0 ? ((lucro / custoTotal) * 100).toFixed(1) : '0.0'
+  return { receita, lucro, margem }
+})
+// --- Fim Simulação ---
 
 const selectedType = ref('')
 const sortField = ref('profit')
@@ -35,8 +59,9 @@ interface ProfitSubtotal {
   totalProfit: number;
 }
 
-const subtotalByType = computed<Record<string, ProfitSubtotal>>(() => {
-  const result: Record<string, ProfitSubtotal> = {}
+// Subtotais por tipo de produto com ajustes de sinais e limites
+const subtotalByType = computed<Record<string, ProfitSubtotal & { margin: string }>>(() => {
+  const result: Record<string, ProfitSubtotal & { margin: string }> = {}
   const products = productStore.products
   const grouped = products.reduce<Record<string, typeof products>>((acc, p) => {
     if (!acc[p.type]) acc[p.type] = []
@@ -44,20 +69,47 @@ const subtotalByType = computed<Record<string, ProfitSubtotal>>(() => {
     return acc
   }, {})
   Object.entries(grouped).forEach(([type, products]) => {
-    const totalAvailable = products.reduce((sum, p) => sum + (p.stock ?? 0), 0)
-    const totalSold = products.reduce((sum, p) => sum + (p.totalSold ?? 0), 0)
-    const totalSalesValue = products.reduce((sum, p) => sum + (p.totalSalesValue ?? 0), 0)
-    const totalCost = products.reduce((sum, p) => sum + (p.totalCost ?? 0), 0)
-    const totalProfit = products.reduce((sum, p) => sum + (p.totalProfit ?? 0), 0)
-    result[type] = { totalAvailable, totalSold, totalSalesValue, totalCost, totalProfit }
+    // Soma estoques, vendidos, receita, custo e lucro
+    let totalAvailable = products.reduce((sum, p) => sum + (p.stock ?? 0), 0)
+    let totalSold = products.reduce((sum, p) => sum + (p.totalSold ?? 0), 0)
+    let totalSalesValue = products.reduce((sum, p) => sum + (p.totalSalesValue ?? 0), 0)
+    let totalCost = products.reduce((sum, p) => sum + (p.totalCost ?? 0), 0)
+    let totalProfit = products.reduce((sum, p) => sum + (p.totalProfit ?? 0), 0)
+
+    // Ajustes de sinais: nunca negativos
+    totalAvailable = Math.max(totalAvailable, 0)
+    totalSold = Math.max(totalSold, 0)
+    totalSalesValue = Math.max(totalSalesValue, 0)
+    totalCost = Math.max(totalCost, 0)
+    totalProfit = Math.max(totalProfit, 0)
+
+    // Margem (%) limitada a 9999, e mostra '—' se custo zero
+    let margin: string
+    if (totalCost > 0) {
+      const rawMargin = (totalProfit / totalCost) * 100
+      margin = `${Math.min(Math.max(rawMargin, 0), 9999).toFixed(1)}`
+    } else {
+      margin = '—'
+    }
+
+    result[type] = { totalAvailable, totalSold, totalSalesValue, totalCost, totalProfit, margin }
   })
   return result
 })
+
+// Atualize também o template para usar subtotal.margin
 
 // --- Helpers para Análise de Lucro por Produto ---
 import { ref as vueRef } from 'vue'
 
 const searchQuery = vueRef('')
+
+const totalMetrics = computed(() => ({
+  products: filteredProdutosLucro.value.length,
+  sold: totalSold.value,
+  revenue: totalSalesValue.value,
+  profit: totalProfit.value
+}))
 
 const filteredProdutosLucro = computed(() => {
   if (!searchQuery.value) return produtosLucroBackend.value
@@ -73,7 +125,7 @@ const totalSold = computed(() =>
   filteredProdutosLucro.value.reduce((sum, p) => sum + p.qtdVendida, 0)
 )
 const totalSalesValue = computed(() =>
-  filteredProdutosLucro.value.reduce((sum, p) => sum + (p.precoMedioVenda * p.qtdVendida), 0)
+  filteredProdutosLucro.value.reduce((sum, p) => sum + p.receitaTotal, 0)
 )
 const totalCost = computed(() =>
   filteredProdutosLucro.value.reduce((sum, p) => sum + p.custoTotal, 0)
@@ -116,31 +168,44 @@ interface TotalMetrics {
 }
 
 const produtosLucroBackend = computed<ProdutoLucro[]>(() => {
+  // Usar os campos do store (já adaptados pelo fetchProducts)
   const produtos = productStore.products
-  const transacoes: MovimentoEstoque[] = inventoryStore.transactions as MovimentoEstoque[]
+  const transacoes: MovimentoEstoque[] = inventoryStore.transactions as any[]
+
+  if (!produtos.length || !transacoes.length) return []
 
   return produtos.map(produto => {
-    const entradas = transacoes.filter(t => String(t.productId) === String(produto.id) && (t.type === 'IN' || t.type === 'ENTRADA'))
-    const saidas = transacoes.filter(t => String(t.productId) === String(produto.id) && (t.type === 'OUT' || t.type === 'SAIDA'))
+    const id = produto.id
+    const nome = produto.code || produto.name || produto.description || '—'
+    const tipo = produto.type || '—'
+    const supplierValue = produto.supplierPrice || 0
+    const qtdEstoque = produto.stock || 0
+
+    // Movimentações desse produto
+    const entradas = transacoes.filter(t => String(t.productId) === String(id) && (t.type === 'input'))
+    const saidas = transacoes.filter(t => String(t.productId) === String(id) && (t.type === 'output'))
 
     const qtdEntradas = entradas.reduce((sum, t) => sum + (t.quantity || 0), 0)
     const qtdSaidas = saidas.reduce((sum, t) => sum + (t.quantity || 0), 0)
     const qtdDisponivel = qtdEntradas - qtdSaidas
     const qtdVendida = qtdSaidas
 
-    const receitaTotal = saidas.reduce((sum, t) => sum + ((t.saleValue || t.value || 0) * (t.quantity || 0)), 0)
-    const custoTotal = entradas.reduce((sum, t) => sum + ((t.value || 0) * (t.quantity || 0)), 0)
+    // Receita total: soma de value * quantity nas saídas
+    const receitaTotal = saidas.reduce((sum, t) => sum + ((t.value || 0) * (t.quantity || 0)), 0)
+    // Custo total: soma de supplierValue * quantity nas entradas
+    const custoTotal = entradas.reduce((sum, t) => sum + (supplierValue * (t.quantity || 0)), 0)
     const lucroUnitario = qtdVendida > 0 ? (receitaTotal - custoTotal) / qtdVendida : 0
     const lucroTotal = receitaTotal - custoTotal
     const margem = custoTotal > 0 ? ((lucroTotal / custoTotal) * 100).toFixed(1) : '0.0'
 
     return {
-      id: produto.id,
-      nome: produto.name || produto.nome,
-      tipo: produto.type || produto.tipo,
+      id: String(id),
+      nome,
+      tipo,
       qtdDisponivel,
       qtdVendida,
       receitaTotal,
+      custoTotal,
       lucroUnitario,
       lucroTotal,
       margem
@@ -187,25 +252,98 @@ function safeFormatNumber(val: any, decimals: number = 2): string {
         <p class="text-lg text-gray-600">Análises e insights sobre seu estoque</p>
       </div>
 
-      <!-- Bloco de cartões de totais/subtotais e análise de lucro (migrado do InventoryTransactions.vue) -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
-        <div class="bg-white rounded-xl shadow border p-6 flex flex-col items-center">
-          <div class="text-sm font-semibold text-gray-500 mb-1">Produtos</div>
-          <div class="text-4xl font-extrabold text-gray-900">{{ safeFormatNumber(totalMetrics.products, 0) }}</div>
+      <!-- Simulação de Projeção de Lucro -->
+      <div class="bg-white rounded-xl shadow border p-6 mb-10">
+        <h2 class="text-lg font-bold text-gray-900 mb-4">Simulação de Projeção de Lucro</h2>
+        <div class="flex flex-col md:flex-row gap-4 items-end">
+          <div class="flex-1">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Produto</label>
+            <select v-model="simulacaoProdutoId" class="w-full border rounded px-2 py-1">
+              <option value="">Selecione...</option>
+              <option v-for="p in produtosLucroBackend" :key="p.id" :value="p.id">{{ p.nome }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Qtd. simulada</label>
+            <input type="number" v-model.number="simulacaoQtd" min="1" class="w-24 border rounded px-2 py-1" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Preço simulado (R$)</label>
+            <input type="number" v-model.number="simulacaoPreco" min="0" step="0.01" class="w-28 border rounded px-2 py-1" />
+          </div>
         </div>
-        <div class="bg-white rounded-xl shadow border p-6 flex flex-col items-center">
-          <div class="text-sm font-semibold text-gray-500 mb-1">Vendas</div>
-          <div class="text-4xl font-extrabold text-blue-600">{{ safeFormatNumber(totalMetrics.sold, 0) }}</div>
-        </div>
-        <div class="bg-white rounded-xl shadow border p-6 flex flex-col items-center">
-          <div class="text-sm font-semibold text-gray-500 mb-1">Receita</div>
-          <div class="text-4xl font-extrabold text-gray-900">{{ safeCurrency(totalMetrics.revenue) }}</div>
-        </div>
-        <div class="bg-white rounded-xl shadow border p-6 flex flex-col items-center">
-          <div class="text-sm font-semibold text-gray-500 mb-1">Lucro</div>
-          <div class="text-4xl font-extrabold text-green-600">{{ safeCurrency(totalMetrics.profit) }}</div>
+        <div v-if="simulacaoResultado" class="mt-6 bg-gray-50 rounded p-4 flex flex-col md:flex-row gap-8 justify-between items-center">
+          <div>
+            <div class="text-xs text-gray-500">Receita projetada</div>
+            <div class="text-lg font-bold text-yellow-700">{{ safeCurrency(simulacaoResultado.receita) }}</div>
+          </div>
+          <div>
+            <div class="text-xs text-gray-500">Lucro projetado</div>
+            <div class="text-lg font-bold text-green-700">{{ safeCurrency(simulacaoResultado.lucro) }}</div>
+          </div>
+          <div>
+            <div class="text-xs text-gray-500">Margem (%)</div>
+            <div class="text-lg font-bold text-blue-700">{{ simulacaoResultado.margem }}%</div>
+          </div>
         </div>
       </div>
+      <!-- Fim Simulação de Projeção -->
+
+      <!-- Relatórios de Destaque -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
+
+      <!-- Produtos com maior lucro -->
+      <div class="bg-white rounded-xl shadow border p-6 mb-10">
+        <h2 class="text-lg font-bold text-gray-900 mb-4">Produtos com maior lucro</h2>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead>
+              <tr>
+                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Produto</th>
+                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Tipo</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Qtd. Vendida</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Receita</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Lucro</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Margem (%)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="p in produtosLucroBackend.slice().sort((a, b) => b.lucroTotal - a.lucroTotal).slice(0, 5)" :key="p.id" class="hover:bg-gray-50">
+                <td class="px-4 py-2 font-medium text-gray-900">{{ p.nome }}</td>
+                <td class="px-4 py-2 text-gray-700">{{ p.tipo }}</td>
+                <td class="px-4 py-2 text-right">{{ safeFormatNumber(p.qtdVendida, 0) }}</td>
+                <td class="px-4 py-2 text-right">{{ safeCurrency(p.receitaTotal) }}</td>
+                <td class="px-4 py-2 text-right text-green-700 font-semibold">{{ safeCurrency(p.lucroTotal) }}</td>
+                <td class="px-4 py-2 text-right">{{ p.margem }}%</td>
+              </tr>
+              <tr v-if="!produtosLucroBackend.length">
+                <td colspan="6" class="px-4 py-2 text-center text-gray-400">Sem dados</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Fim Produtos com maior lucro -->
+
+        <!-- Produto mais lucrativo -->
+        <div class="bg-white rounded-xl shadow border p-6 flex flex-col items-center">
+          <div class="text-sm font-semibold text-gray-500 mb-1">Produto mais lucrativo</div>
+          <div v-if="produtosLucroBackend.length" class="text-center">
+            <div class="text-lg font-bold text-gray-800 mb-1">
+              <span>{{ produtosLucroBackend.slice().sort((a, b) => b.lucroTotal - a.lucroTotal)[0]?.nome || '—' }}</span>
+            </div>
+            <div class="text-green-600 text-2xl font-extrabold">
+              {{ safeCurrency(produtosLucroBackend.slice().sort((a, b) => b.lucroTotal - a.lucroTotal)[0]?.lucroTotal) }}
+            </div>
+            <div class="text-xs text-gray-400">Lucro total</div>
+          </div>
+          <div v-else class="text-gray-400">Sem dados</div>
+        </div>
+      </div>
+      <!-- Fim dos relatórios de destaque -->
+
+      <!-- Bloco de cartões de totais/subtotais e análise de lucro (migrado do InventoryTransactions.vue) -->
+      
       <!-- Fim do bloco migrado -->
 
       <!-- Subtotais por Tipo de Produto -->
@@ -231,17 +369,14 @@ function safeFormatNumber(val: any, decimals: number = 2): string {
                 <td class="px-4 py-2 text-right">{{ safeFormatNumber(subtotal.totalSold, 0) }}</td>
                 <td class="px-4 py-2 text-right">{{ safeCurrency(subtotal.totalSalesValue) }}</td>
                 <td class="px-4 py-2 text-right">{{ safeCurrency(subtotal.totalCost) }}</td>
-                <td class="px-4 py-2 text-right"
-                  :class="{ 'text-green-600': subtotal.totalProfit > 0, 'text-red-600': subtotal.totalProfit < 0 }">{{
-                    safeCurrency(subtotal.totalProfit) }}</td>
-                <td class="px-4 py-2 text-right">{{ subtotal.totalCost > 0 ? (subtotal.totalProfit / subtotal.totalCost
-                  * 100).toFixed(1) : '0.0' }}%</td>
+                <td class="px-4 py-2 text-right">{{ safeCurrency(subtotal.totalProfit) }}</td>
+                <td class="px-4 py-2 text-right">{{ subtotal.margin }}<span v-if="subtotal.margin !== '—'">%</span></td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
-
+      *
       <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
         <div class="bg-white rounded-xl shadow border p-6 flex flex-col items-center">
           <div class="text-sm font-semibold text-gray-500 mb-1">Produtos</div>
@@ -274,24 +409,22 @@ function safeFormatNumber(val: any, decimals: number = 2): string {
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Análise de Lucro por Produto (fiel ao relatório original) -->
-    <div class="bg-white rounded-xl shadow border p-6">
-      <div class="mb-4 flex flex-wrap justify-between items-center gap-3">
-        <div class="text-sm text-gray-500">
-          <span class="font-medium">{{ produtosLucroBackend.length }}</span> produtos analisados
+      <!-- Análise de Lucro por Produto (fiel ao relatório original) -->
+      <div class="bg-white rounded-xl shadow border p-6">
+        <div class="mb-4 flex flex-wrap justify-between items-center gap-3">
+          <div class="text-sm text-gray-500">
+            <span class="font-medium">{{ produtosLucroBackend.length }}</span> produtos analisados
+          </div>
+          <div class="relative text-gray-600 focus-within:text-gray-400">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-2">
+              <span class="material-icons text-gray-400 text-sm">search</span>
+            </span>
+            <input v-model="searchQuery" type="search"
+              class="py-2 pl-10 pr-3 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Filtrar produtos..." aria-label="Filtrar produtos">
+          </div>
         </div>
-        <div class="relative text-gray-600 focus-within:text-gray-400">
-          <span class="absolute inset-y-0 left-0 flex items-center pl-2">
-            <span class="material-icons text-gray-400 text-sm">search</span>
-          </span>
-          <input v-model="searchQuery" type="search"
-            class="py-2 pl-10 pr-3 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Filtrar produtos..." aria-label="Filtrar produtos">
-        </div>
-      </div>
-      <div class="overflow-x-auto rounded-lg border">
         <table class="min-w-full divide-y divide-gray-200 bg-white rounded-lg">
           <thead class="bg-gray-50">
             <tr>
@@ -342,120 +475,14 @@ function safeFormatNumber(val: any, decimals: number = 2): string {
             </tr>
           </tfoot>
         </table>
-    </div>
+      </div>
 
-    <!-- Removed stray </table> tag that caused invalid end tag error -->
-    <th scope="col"
-      class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-      @click="setSorting('name')">
-      Produto
-      <span v-if="sortField === 'name'" class="ml-1">
-        {{ sortDirection === 'asc' ? '↑' : '↓' }}
-      </span>
-    </th>
-    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-      Tipo
-    </th>
-    <th scope="col"
-      class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-      @click="setSorting('stock')">
-      Quantidade Disponível
-      <span v-if="sortField === 'stock'" class="ml-1">
-        {{ sortDirection === 'asc' ? '↑' : '↓' }}
-      </span>
-    </th>
-    <th scope="col"
-      class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-      @click="setSorting('sold')">
-      Quantidade Vendida
-      <span v-if="sortField === 'sold'" class="ml-1">
-        {{ sortDirection === 'asc' ? '↑' : '↓' }}
-      </span>
-    </th>
-    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-      Receita
-    </th>
-    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-      Lucro Unitário<br />(Venda - Fornecedor)
-    </th>
-    <th scope="col"
-      class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-      @click="setSorting('profit')">
-      Lucro Total<br />(Lucro Unitário × Vendido)
-      <span v-if="sortField === 'profit'" class="ml-1">
-        {{ sortDirection === 'asc' ? '↑' : '↓' }}
-      </span>
-      <span class="ml-1 cursor-pointer"
-        title="Lucro total = (Valor de Venda - Valor do Fornecedor) x Quantidade Vendida">
-        <svg xmlns="http://www.w3.org/2000/svg" class="inline h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24"
-          stroke="currentColor">
-          <title>Lucro total = (Valor de Venda - Valor do Fornecedor) x Quantidade Vendida</title>
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" />
-        </svg>
-      </span>
-    </th>
-    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-      Margem
-    </th>
-    <tbody class="bg-white divide-y divide-gray-200">
-      <tr v-for="produto in produtosLucroBackend" :key="produto.id" class="hover:bg-gray-50">
-        <td class="px-6 py-4 whitespace-nowrap">
-          <a @click.prevent="viewProduct(produto.id)" href="#"
-            class="text-sm font-medium text-primary-600 hover:text-primary-900">
-            {{ produto.nome }}
-          </a>
-        </td>
-        <td class="px-6 py-4 whitespace-nowrap">
-          <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-primary-100 text-primary-800">
-            {{ produto.tipo }}
-          </span>
-        </td>
-        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-          {{ safeFormatNumber(produto.qtdDisponivel, 0) }}
-        </td>
-        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-          {{ safeFormatNumber(produto.qtdVendida, 0) }}
-          <span class="ml-1 cursor-pointer" title="Quantidade total de vendas (saídas) deste produto">
-            <svg xmlns="http://www.w3.org/2000/svg" class="inline h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor">
-              <title>Quantidade total de vendas (saídas) deste produto</title>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" />
-            </svg>
-          </span>
-        </td>
-        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-          {{ safeCurrency(produto.receitaTotal) }}
-        </td>
-        <td class="px-6 py-4 whitespace-nowrap text-sm">
-          {{ safeCurrency(produto.lucroUnitario) }}
-        </td>
-        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-          <span :class="{
-            'text-green-600 font-bold': produto.lucroTotal > 0,
-            'text-red-600 font-bold': produto.lucroTotal < 0,
-            'text-gray-500': produto.lucroTotal === 0
-          }">
-            {{ safeCurrency(produto.lucroTotal) }}
-            <span v-if="produto.lucroTotal > 0" title="Lucro positivo">▲</span>
-            <span v-else-if="produto.lucroTotal < 0" title="Prejuízo">▼</span>
-            <span v-else title="Nenhum lucro">–</span>
-          </span>
-        </td>
-      </tr>
-    </tbody>
-    <!-- Removed invalid </table> end tag. No replacement needed. -->
-  </div>
-  </div>
-
-  <div class="bg-white rounded-xl shadow border p-6 mt-10">
-    <h2 class="text-xl font-bold text-gray-900 mb-6">Movimentações Detalhadas por Produto</h2>
-    <div class="overflow-x-auto rounded-lg border">
       <table class="min-w-full divide-y divide-gray-200 bg-white rounded-lg">
         <thead>
           <tr>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
+            <th scope="col"
+              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+              @click="setSorting('name')">Produto</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Entradas</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               UNITS SOLD

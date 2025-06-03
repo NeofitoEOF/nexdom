@@ -77,17 +77,15 @@ const transactions = computed<InventoryTransaction[]>(() => {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 })
 
-/**
- * Interface estendida para transações com informações do produto associado
- */
+
 interface TransactionWithProductInfo extends Omit<InventoryTransaction, 'productId'> {
   productId: string;
-  productCode?: string; // Tornar opcional já que nem sempre temos o código
+  productCode?: string; 
   productName: string;
   productType: string;
   productNotes: string;
   value: number;
-  displayType?: string; // Tipo traduzido para exibição
+  displayType?: string; 
 }
 
 const transactionsWithProductInfo = computed(() => {
@@ -99,18 +97,13 @@ const transactionsWithProductInfo = computed(() => {
       productName: product ? product.name : '',
       productType: product ? product.type : '',
       productNotes: product ? product.description : 'Produto Desconhecido',
-      // Usar a função traduzirTipoMovimentacao para exibição consistente
       displayType: traduzirTipoMovimentacao(transaction.type)
     } as TransactionWithProductInfo
   })
 })
 
-/**
- * Processa a submissão do formulário de movimentação de estoque
- * Valida os dados e envia para o backend
- */
+
 const handleTransaction = async (): Promise<void> => {
-  // Validação dos campos do formulário
   if (!selectedProductId.value) {
     error.value = 'Por favor, selecione um produto'
     return
@@ -126,7 +119,6 @@ const handleTransaction = async (): Promise<void> => {
     return
   }
   
-  // Validação de estoque para saídas
   if (type.value === 'output' && selectedProduct.value) {
     if (selectedProduct.value.stock < quantity.value) {
       error.value = `Estoque insuficiente. Disponível: ${selectedProduct.value.stock}`
@@ -134,13 +126,11 @@ const handleTransaction = async (): Promise<void> => {
     }
   }
   
-  // Limpa mensagens anteriores e inicia o processo
   error.value = ''
   success.value = ''
   loading.value = true
   
   try {
-    // Prepara os dados da transação
     const newTransaction = {
       productId: selectedProductId.value,
       type: type.value,
@@ -149,11 +139,9 @@ const handleTransaction = async (): Promise<void> => {
       notes: notes.value
     }
     
-    // Envia para o store que se comunica com a API
     const result = await inventoryStore.addTransaction(newTransaction)
     
     if (result.success) {
-      // Feedback de sucesso e reset do formulário
       success.value = `${type.value === 'input' ? 'Adicionado' : 'Removido'} ${quantity.value} itens com sucesso`
       selectedProductId.value = ''
       quantity.value = 1
@@ -184,16 +172,12 @@ const viewProduct = (productId: string | number): void => {
   router.push(`/products/${productId}`)
 }
 
-/**
- * Produtos com dados de lucro calculados
- */
+
 const productsWithProfit = computed<ProductWithProfit[]>(() => {
   return inventoryStore.getProductsWithProfitData
 })
 
-/**
- * Produtos agrupados por tipo para análise de lucro
- */
+
 const productsByType = computed<Record<string, ProductWithProfit[]>>(() => {
   const result: Record<string, ProductWithProfit[]> = {}
   
@@ -207,9 +191,7 @@ const productsByType = computed<Record<string, ProductWithProfit[]>>(() => {
   return result
 })
 
-/**
- * Interface para os subtotais por tipo de produto
- */
+
 interface ProfitSubtotal {
   totalAvailable: number;
   totalSold: number;
@@ -218,9 +200,7 @@ interface ProfitSubtotal {
   totalProfit: number;
 }
 
-/**
- * Calcula subtotais por tipo de produto para análise de lucro
- */
+
 const subtotalByType = computed<Record<string, ProfitSubtotal>>(() => {
   const result: Record<string, ProfitSubtotal> = {}
   
@@ -243,60 +223,43 @@ const subtotalByType = computed<Record<string, ProfitSubtotal>>(() => {
   return result
 })
 
-/**
- * Total de produtos disponíveis em estoque
- */
 const totalAvailable = computed(() => {
   return Object.values(subtotalByType.value).reduce((sum, data) => sum + data.totalAvailable, 0)
 })
 
-/**
- * Total de produtos vendidos
- */
+
 const totalSold = computed(() => {
   return Object.values(subtotalByType.value).reduce((sum, data) => sum + data.totalSold, 0)
 })
 
-/**
- * Total de valor de vendas
- */
+
 const totalSalesValue = computed(() => {
   return Object.values(subtotalByType.value).reduce((sum, data) => sum + data.totalSalesValue, 0)
 })
 
-/**
- * Total de custo (baseado no preço do fornecedor)
- */
+
 const totalCost = computed(() => {
   return Object.values(subtotalByType.value).reduce((sum, data) => sum + data.totalCost, 0)
 })
 
-/**
- * Lucro total
- */
 const totalProfit = computed(() => {
   return Object.values(subtotalByType.value).reduce((sum, data) => sum + data.totalProfit, 0)
 })
 
-/**
- * Margem de lucro percentual média
- */
+
 const averageProfitMargin = computed(() => {
   return totalCost.value > 0 ? (totalProfit.value / totalCost.value) * 100 : 0
 })
 
-/**
- * Inicializa os dados necessários ao montar o componente
- */
+
 onMounted(async () => {
   console.log('Montando componente InventoryTransactions')
   loading.value = true
   
   try {
-    // Carrega produtos e transações em paralelo para melhor performance
     await Promise.all([
       productStore.fetchProducts(),
-      inventoryStore.initialize() // Usa o método initialize que tem retry embutido
+      inventoryStore.initialize() 
     ])
     
     console.log('Dados carregados com sucesso')
@@ -425,8 +388,8 @@ onMounted(async () => {
           </button>
         </div>
       </div>
-      <!-- ... outros cards da grid aqui ... -->
     </div>
+    <!-- Fim dos cards/grid -->
     <div class="py-6 h-screen overflow-y-auto">
         <div class="w-full mx-auto px-2 sm:px-4 lg:px-6">
           <div class="mb-6 flex flex-wrap justify-between items-center gap-4">
@@ -593,4 +556,5 @@ onMounted(async () => {
           </table>
         </div>
       </div>
-  </template>
+    </div>
+</template>
