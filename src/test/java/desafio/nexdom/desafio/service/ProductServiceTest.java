@@ -4,10 +4,10 @@ import desafio.nexdom.desafio.model.Product;
 import org.springframework.data.domain.Pageable;
 
 import desafio.nexdom.desafio.repository.ProductRepository;
+import desafio.nexdom.desafio.repository.StockMovementRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
@@ -24,7 +24,9 @@ class ProductServiceTest {
     @Mock
     private ProductRepository productRepository;
 
-    @InjectMocks
+    @Mock
+    private StockMovementRepository stockMovementRepository;
+
     private ProductServiceImpl productService;
 
     private Product testProduct;
@@ -37,6 +39,7 @@ class ProductServiceTest {
         testProduct.setType("ELECTRONIC");
         testProduct.setSupplierValue(BigDecimal.valueOf(100));
         testProduct.setStockQuantity(10);
+        productService = new ProductServiceImpl(productRepository, stockMovementRepository);
     }
 
     @Test
@@ -64,6 +67,10 @@ class ProductServiceTest {
 
     @Test
     void testDeleteProduct() {
+        // Simula produto existente com estoque zero
+        testProduct.setStockQuantity(0);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(testProduct));
+        when(stockMovementRepository.findByProduct_Id(1L)).thenReturn(List.of());
         productService.deleteById(1L);
         verify(productRepository, times(1)).deleteById(1L);
     }

@@ -15,5 +15,6 @@ public interface IStockMovementService {
     List<StockMovement> getMovementsByProduct(Long productId);
     StockMovement save(StockMovement movement);
     BigDecimal calculateProfit(Long productId);
+    desafio.nexdom.desafio.dto.ProfitResultDto calculateProfitAndTotalSold(Long productId);
     Map<Long, List<StockMovementDTO>> findAllGroupedByProduct();
 }

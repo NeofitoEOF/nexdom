@@ -3,13 +3,10 @@ package desafio.nexdom.desafio.hateoas;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-
-
 import desafio.nexdom.desafio.model.Product;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
-
 import java.math.BigDecimal;
 import java.util.Map;
 
@@ -78,13 +75,9 @@ public class ProductModel extends BaseModel<ProductModel> {
 
     private void addProductLinks(Long productId) {
         this.addSelfLink(desafio.nexdom.desafio.controller.ProductController.class, productId);
-
         this.addActionLink(desafio.nexdom.desafio.controller.ProductController.class, "update", "PUT", productId);
-
         this.addActionLink(desafio.nexdom.desafio.controller.ProductController.class, "delete", "DELETE", productId);
-
         this.addCollectionLink(desafio.nexdom.desafio.controller.ProductController.class, "all-products");
-
         if (this.getType() != null) {
             this.addActionLink(desafio.nexdom.desafio.controller.ProductController.class, "by-type", "GET", this.getType());
         }

@@ -6,13 +6,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
-
-
 import desafio.nexdom.desafio.model.StockMovement;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -90,7 +87,6 @@ public class StockMovementModel extends BaseModel<StockMovementModel> {
         if (movement == null) {
             return null;
         }
-
         StockMovementModel model = new StockMovementModel();
         model.setId(movement.getId());
         model.setProductId(movement.getProduct() != null ? movement.getProduct().getId() : null);
@@ -99,7 +95,6 @@ public class StockMovementModel extends BaseModel<StockMovementModel> {
         model.setMovementDate(movement.getMovementDate());
         model.setQuantity(movement.getQuantity());
         model.setDescription(movement.getDescription()); // garante preenchimento
-        
         model.addStockMovementLinks(movement);
         
         return model;
@@ -107,11 +102,8 @@ public class StockMovementModel extends BaseModel<StockMovementModel> {
 
     private void addStockMovementLinks(StockMovement movement) {
         this.addSelfLink(desafio.nexdom.desafio.controller.StockMovementController.class, movement.getId());
-
         this.addActionLink(desafio.nexdom.desafio.controller.StockMovementController.class, "delete", "DELETE", movement.getId());
-
         this.addCollectionLink(desafio.nexdom.desafio.controller.StockMovementController.class, "all-movements");
-
         if (movement.getProduct() != null) {
             this.addActionLink(desafio.nexdom.desafio.controller.ProductController.class, "product", "GET", movement.getProduct().getId());
         }

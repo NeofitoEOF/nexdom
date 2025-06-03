@@ -19,7 +19,6 @@ import desafio.nexdom.desafio.repository.ProductRepository;
 import desafio.nexdom.desafio.repository.StockMovementRepository;
 import jakarta.validation.Valid;
 import java.net.URI;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
@@ -88,12 +87,8 @@ public class StockMovementController {
             @Valid @RequestBody StockMovementRequest request) {
         
         try {
-            
-            
             Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ProductNotFoundException(request.getProductId()));
-            
-            
             
             StockMovement stockMovement = new StockMovement();
             stockMovement.setProduct(product);
@@ -102,8 +97,6 @@ public class StockMovementController {
             stockMovement.setQuantity(request.getQuantity());
             stockMovement.setMovementDate(java.time.LocalDateTime.now());
             stockMovement.setDescription(request.getDescription());
-            
-            
             
             StockMovement savedMovement = stockMovementRepository.save(stockMovement);
             
@@ -119,12 +112,8 @@ public class StockMovementController {
                 }
                 product.setStockQuantity(product.getStockQuantity() - savedMovement.getQuantity());
             }
-            
             productRepository.save(product);
-            
             StockMovementModel model = StockMovementModel.fromStockMovement(savedMovement);
-            
-
             
             URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest()
@@ -185,29 +174,29 @@ public class StockMovementController {
     }
 
     @GetMapping("/profit/{productId}")
-    public ResponseEntity<Object> getProfitByProduct(
-             @PathVariable Long productId) {
-        BigDecimal profit = stockMovementService.calculateProfit(productId);
-        
-        ObjectNode response = JsonNodeFactory.instance.objectNode();
-        response.put("profit", profit);
-        
-        ObjectNode linksNode = JsonNodeFactory.instance.objectNode();
-        
-        ObjectNode selfNode = JsonNodeFactory.instance.objectNode();
-        selfNode.put("href", linkTo(methodOn(StockMovementController.class).getProfitByProduct(productId)).toString());
-        linksNode.set("self", selfNode);
-        
-        ObjectNode productNode = JsonNodeFactory.instance.objectNode();
-        productNode.put("href", linkTo(methodOn(ProductController.class).getProductById(productId)).toString());
-        linksNode.set("product", productNode);
-        
-        ObjectNode stockMovementsNode = JsonNodeFactory.instance.objectNode();
-        stockMovementsNode.put("href", linkTo(methodOn(StockMovementController.class).getMovementsByProduct(productId, 0, 20)).toString());
-        linksNode.set("stock-movements", stockMovementsNode);
-        
-        response.set("_links", linksNode);
-        
-        return ResponseEntity.ok(response);
-    }
+public ResponseEntity<Object> getProfitByProduct(@PathVariable Long productId) {
+    var profitResult = stockMovementService.calculateProfitAndTotalSold(productId);
+    ObjectNode response = JsonNodeFactory.instance.objectNode();
+    response.put("profit", profitResult.getProfit());
+    response.put("totalSold", profitResult.getTotalSold());
+
+    ObjectNode linksNode = JsonNodeFactory.instance.objectNode();
+
+    ObjectNode selfNode = JsonNodeFactory.instance.objectNode();
+    selfNode.put("href", linkTo(methodOn(StockMovementController.class).getProfitByProduct(productId)).toString());
+    linksNode.set("self", selfNode);
+
+    ObjectNode productNode = JsonNodeFactory.instance.objectNode();
+    productNode.put("href", linkTo(methodOn(ProductController.class).getProductById(productId)).toString());
+    linksNode.set("product", productNode);
+
+    ObjectNode stockMovementsNode = JsonNodeFactory.instance.objectNode();
+    stockMovementsNode.put("href", linkTo(methodOn(StockMovementController.class).getMovementsByProduct(productId, 0, 20)).toString());
+    linksNode.set("stock-movements", stockMovementsNode);
+
+    response.set("_links", linksNode);
+
+    return ResponseEntity.ok(response);
+}
+
 }

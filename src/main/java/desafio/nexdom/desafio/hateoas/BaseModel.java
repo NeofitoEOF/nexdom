@@ -1,5 +1,4 @@
 package desafio.nexdom.desafio.hateoas;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import lombok.Getter;
@@ -8,9 +7,6 @@ import org.springframework.hateoas.RepresentationModel;
 import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-
-import java.net.URI;
-
 
 @Getter
 @JsonInclude(JsonInclude.Include.NON_EMPTY)

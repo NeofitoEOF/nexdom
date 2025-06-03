@@ -78,7 +78,8 @@ class DesafioNexdomApplicationTests {
 			StockMovement entryMovement = new StockMovement();
 			entryMovement.setProduct(savedProduct);
 			entryMovement.setMovementType(MovementType.ENTRADA);
-			entryMovement.setSaleValue(BigDecimal.valueOf(0.01)); 
+			entryMovement.setPurchaseValue(BigDecimal.valueOf(0.01)); 
+entryMovement.setSaleValue(BigDecimal.valueOf(0.01)); 
 			entryMovement.setMovementDate(LocalDateTime.now());
 			entryMovement.setQuantity(10);
 
@@ -102,7 +103,7 @@ class DesafioNexdomApplicationTests {
 			assertEquals(5, finalProduct.getStockQuantity());
 
 			BigDecimal profit = stockMovementService.calculateProfit(savedProduct.getId());
-			assertEquals(BigDecimal.valueOf(250), profit);
+			assertEquals(BigDecimal.valueOf(749.95), profit);
 
 			StockMovement invalidMovement = new StockMovement();
 			invalidMovement.setProduct(finalProduct);

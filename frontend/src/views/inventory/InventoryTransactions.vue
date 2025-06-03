@@ -279,7 +279,7 @@ onMounted(async () => {
       <p class="text-gray-600">Gerenciar níveis de estoque dos produtos</p>
     </div>
     
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols">
       <div class="bg-white p-6 rounded-lg shadow border">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">Nova Movimentação</h2>
         
@@ -340,7 +340,7 @@ onMounted(async () => {
             {{ success }}
           </div>
 
-          <div class="flex justify-end">
+          <div class="flex justify-center">
             <BaseButton
               :type="'submit'"
               :btnClass="type === 'output' ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'"

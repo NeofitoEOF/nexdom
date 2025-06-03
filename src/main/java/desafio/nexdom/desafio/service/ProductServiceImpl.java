@@ -3,6 +3,7 @@ package desafio.nexdom.desafio.service;
 import desafio.nexdom.desafio.interfaces.IProductService;
 import desafio.nexdom.desafio.model.Product;
 import desafio.nexdom.desafio.repository.ProductRepository;
+import desafio.nexdom.desafio.repository.StockMovementRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -14,9 +15,11 @@ import org.springframework.data.domain.Pageable;
 public class ProductServiceImpl implements IProductService {
 
     private final ProductRepository productRepository;
+    private final StockMovementRepository stockMovementRepository;
 
-    public ProductServiceImpl(ProductRepository productRepository) {
+    public ProductServiceImpl(ProductRepository productRepository, StockMovementRepository stockMovementRepository) {
         this.productRepository = productRepository;
+        this.stockMovementRepository = stockMovementRepository;
     }
 
     @Transactional(readOnly = true)
@@ -42,6 +45,14 @@ public class ProductServiceImpl implements IProductService {
 
     @Transactional
     public void deleteById(Long id) {
+        Product product = productRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Product not found: " + id));
+        if (product.getStockQuantity() != null && product.getStockQuantity() > 0) {
+            throw new IllegalStateException("Não é possível excluir o produto enquanto o estoque for maior que zero.");
+        }
+        // Remove todas as movimentações associadas ao produto
+        stockMovementRepository.findByProduct_Id(id).forEach(stockMovementRepository::delete);
+        // Agora remove o produto
         productRepository.deleteById(id);
     }
 
