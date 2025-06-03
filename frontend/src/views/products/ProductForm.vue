@@ -49,32 +49,29 @@
             </div>
             
             <div class="relative">
-              <label for="name" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+              <label for="code" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Nome
+                Código
               </label>
               <div class="relative">
                 <BaseInput
-                  id="name"
-                  v-model="form.name"
+                  id="code"
+                  v-model="form.code"
                   type="text"
                   class="input w-full pl-3 pr-10 py-2.5 rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
-                  :class="{ 'border-danger-500 ring-1 ring-danger-500': formSubmitted && errors.name }"
-                  placeholder="Nome do produto"
+                  :class="{ 'border-danger-500 ring-1 ring-danger-500': formSubmitted && errors.code }"
+                  placeholder="Código do produto"
                 />
               </div>
-              <p v-if="formSubmitted && errors.name" class="mt-1 text-sm text-danger-600 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                {{ errors.name }}
+              <p v-if="formSubmitted && errors.code" class="mt-1 text-sm text-danger-600 flex items-center">
+                {{ errors.code }}
               </p>
             </div>
 
             <div class="relative">
-              <label for="supplierPrice" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+              <label for="supplierValue" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -82,26 +79,21 @@
               </label>
               <div class="relative">
                 <BaseInput
-                  id="supplierPrice"
-                  v-model="form.supplierPrice"
+                  id="supplierValue"
+                  v-model="form.supplierValue"
                   type="number"
                   class="input w-full pl-3 pr-10 py-2.5 rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
-                  :class="{ 'border-danger-500 ring-1 ring-danger-500': formSubmitted && errors.supplierPrice }"
+                  :class="{ 'border-danger-500 ring-1 ring-danger-500': formSubmitted && errors.supplierValue }"
                   placeholder="Preço de custo do produto"
                 />
                 <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
                   <span>R$</span>
                 </div>
               </div>
-              <p v-if="formSubmitted && errors.supplierPrice" class="mt-1 text-sm text-danger-600 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                {{ errors.supplierPrice }}
+              <p v-if="formSubmitted && errors.supplierValue" class="mt-1 text-sm text-danger-600 flex items-center">
+                {{ errors.supplierValue }}
               </p>
             </div>
-
-
 
             <div class="relative">
               <label for="description" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
@@ -121,15 +113,12 @@
                 />
               </div>
               <p v-if="formSubmitted && errors.description" class="mt-1 text-sm text-danger-600 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
                 {{ errors.description }}
               </p>
             </div>
 
             <div class="relative">
-              <label for="stock" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+              <label for="stockQuantity" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l4 2" />
                 </svg>
@@ -137,22 +126,19 @@
               </label>
               <div class="relative">
                 <BaseInput
-                  id="stock"
-                  v-model="form.stock"
+                  id="stockQuantity"
+                  v-model="form.stockQuantity"
                   type="number"
                   class="input w-full pl-3 pr-10 py-2.5 rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm"
-                  :class="{ 'border-danger-500 ring-1 ring-danger-500': formSubmitted && errors.stock }"
+                  :class="{ 'border-danger-500 ring-1 ring-danger-500': formSubmitted && errors.stockQuantity }"
                   placeholder="Estoque do produto"
                 />
                 <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
                   <span>un</span>
                 </div>
               </div>
-              <p v-if="formSubmitted && errors.stock" class="mt-1 text-sm text-danger-600 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                {{ errors.stock }}
+              <p v-if="formSubmitted && errors.stockQuantity" class="mt-1 text-sm text-danger-600 flex items-center">
+                {{ errors.stockQuantity }}
               </p>
             </div>
 
@@ -238,11 +224,11 @@ onMounted(async (): Promise<void> => {
     const existingProduct = productStore.getProductById(productId.value || '')
     if (existingProduct) {
       form.value = {
-        name: existingProduct.name || '',
         description: existingProduct.description || '',
         type: existingProduct.type || '',
-        supplierPrice: existingProduct.supplierPrice || 0,
-        stock: existingProduct.stock || 0
+        supplierValue: existingProduct.supplierPrice || 0,
+        stockQuantity: existingProduct.stock || 0,
+        code: existingProduct.code || ''
       }
     } else {
       router.push('/products')

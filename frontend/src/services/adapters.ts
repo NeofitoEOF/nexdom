@@ -32,12 +32,11 @@ export function mapTransactionFromBackend(backendTransaction: any): InventoryTra
 
 export function mapProductToBackend(product: any) {
   return {
-    name: product.name,
+    code: product.code,
     description: product.description,
     type: product.type,
-    supplierPrice: product.supplierPrice,
-    sellingPrice: product.sellingPrice || 0,
-    stock: product.stock
+    supplierValue: Number(product.supplierValue),
+    stockQuantity: Number(product.stockQuantity)
   };
 }
 
@@ -48,8 +47,7 @@ export function mapProductFromBackend(backendProduct: any) {
     name: backendProduct.name,
     description: backendProduct.description,
     type: backendProduct.type,
-    supplierPrice: backendProduct.supplierPrice,
-    sellingPrice: backendProduct.sellingPrice || 0,
-    stock: backendProduct.stock
+    supplierValue: backendProduct.supplierValue,
+    stockQuantity: backendProduct.stockQuantity
   };
 }

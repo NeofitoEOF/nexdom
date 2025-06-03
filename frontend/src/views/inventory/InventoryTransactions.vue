@@ -389,11 +389,11 @@ onMounted(async () => {
         </div>
       </div>
     </div>
-    <!-- Fim dos cards/grid -->
+
     <div class="py-6 h-screen overflow-y-auto">
-        <div class="w-full mx-auto px-2 sm:px-4 lg:px-6">
+      <div class="w-full mx-auto px-2 sm:px-4 lg:px-6">
           <div class="mb-6 flex flex-wrap justify-between items-center gap-4">
-            <h1 class="text-2xl font-semibold text-gray-900">Análise de Inventário</h1>
+            <h1 class="text-2xl font-semibold text-gray-900">Historico de Movimentações</h1>
             <button 
               @click="inventoryStore.fetchTransactions()"
               class="text-sm text-blue-600 hover:text-blue-800"
@@ -478,83 +478,7 @@ onMounted(async () => {
               </tbody>
             </table>
           </div>
-        </div>
-        
-        <div v-if="inventoryStore.isLoading" class="text-center py-4 text-gray-500">
-          Carregando movimentações...
-        </div>
-        
-        <div v-else-if="inventoryStore.error" class="text-center py-4 text-red-500">
-          Erro: {{ inventoryStore.error }}
-        </div>
-        
-        <div v-else class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Data
-                </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Produto
-                </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tipo
-                </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Quantidade
-                </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Valor de Venda
-                </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Descrição
-                </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="transaction in transactionsWithProductInfo" :key="transaction.id" class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ formatDate(transaction.date) }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <a 
-                    href="#"
-                    class="text-sm font-medium text-blue-600 hover:text-blue-900"
-                  >
-                    {{ transaction.productName }}
-                  </a>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span 
-                    class="px-2 py-1 text-xs font-medium rounded-full"
-                    :class="{
-                      'bg-green-100 text-green-800': transaction.type === 'input',
-                      'bg-red-100 text-red-800': transaction.type === 'output'
-                    }"
-                  >
-                    {{ transaction.type === 'input' ? 'Entrada' : 'Saída' }}
-                  </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ transaction.quantity }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ formatCurrency(transaction.value) }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ transaction.notes || '-' }}
-                </td>
-              </tr>
-              
-              <tr v-if="transactionsWithProductInfo.length === 0">
-                <td colspan="6" class="px-6 py-4 text-center text-gray-500">
-                  Nenhuma movimentação encontrada.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
       </div>
     </div>
+  </div>
 </template>

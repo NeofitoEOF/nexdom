@@ -20,17 +20,17 @@
               
               <div class="mt-4">
                 <form @submit.prevent="handleSubmit" class="space-y-4">
-                  <!-- Nome do produto -->
+                  <!-- Código do produto -->
                   <div>
-                    <label for="name" class="block text-sm font-medium text-gray-700">Nome</label>
+                    <label for="code" class="block text-sm font-medium text-gray-700">Código</label>
                     <input 
                       type="text" 
-                      id="name" 
-                      v-model="form.name" 
+                      id="code" 
+                      v-model="form.code" 
                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      :class="{'border-red-300 focus:border-red-500 focus:ring-red-500': errors.name}"
+                      :class="{'border-red-300 focus:border-red-500 focus:ring-red-500': errors.code}"
                     />
-                    <p v-if="errors.name" class="mt-1 text-sm text-red-600">{{ errors.name }}</p>
+                    <p v-if="errors.code" class="mt-1 text-sm text-red-600">{{ errors.code }}</p>
                   </div>
                   
                   <!-- Tipo de produto -->
@@ -70,35 +70,32 @@
                       </div>
                       <input 
                         type="number" 
-                        id="supplierPrice" 
-                        v-model="form.supplierPrice" 
+                        id="supplierValue" 
+                        v-model="form.supplierValue" 
                         step="0.01" 
                         min="0" 
                         class="block w-full pl-10 pr-12 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        :class="{'border-red-300 focus:border-red-500 focus:ring-red-500': errors.supplierPrice}"
-                      />
                     </div>
-                    <p v-if="errors.supplierPrice" class="mt-1 text-sm text-red-600">{{ errors.supplierPrice }}</p>
+                    <p v-if="errors.supplierValue" class="mt-1 text-sm text-red-600">{{ errors.supplierValue }}</p>
                   </div>
                   
                   <!-- Estoque -->
                   <div>
-                    <label for="stock" class="block text-sm font-medium text-gray-700">Estoque</label>
+                    <label for="stockQuantity" class="block text-sm font-medium text-gray-700">Estoque</label>
                     <div class="mt-1 relative rounded-md shadow-sm">
                       <input 
                         type="number" 
-                        id="stock" 
-                        v-model="form.stock" 
-                        step="1" 
-                        min="0" 
+                        id="stockQuantity" 
+                        v-model="form.stockQuantity" 
                         class="block w-full pr-12 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        :class="{'border-red-300 focus:border-red-500 focus:ring-red-500': errors.stock}"
+                        :class="{'border-red-300 focus:border-red-500 focus:ring-red-500': errors.stockQuantity}"
+                        min="0" step="1"
                       />
                       <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                         <span class="text-gray-500 sm:text-sm">un</span>
                       </div>
                     </div>
-                    <p v-if="errors.stock" class="mt-1 text-sm text-red-600">{{ errors.stock }}</p>
+                    <p v-if="errors.stockQuantity" class="mt-1 text-sm text-red-600">{{ errors.stockQuantity }}</p>
                   </div>
 
                   <!-- Mensagem de erro -->
@@ -167,11 +164,11 @@ const productTypes = PRODUCT_TYPES
 
 // Estado do formulário
 const form = reactive({
-  name: '',
+  code: '',
   description: '',
   type: '',
-  supplierPrice: 0,
-  stock: 0
+  supplierValue: 0,
+  stockQuantity: 0
 })
 
 // Estado de erros e loading
@@ -181,11 +178,11 @@ const loading = ref(false)
 // Carregar dados do produto quando o modal abrir
 watch(() => props.show, (newVal) => {
   if (newVal && props.product) {
-    form.name = props.product.name
-    form.description = props.product.description
-    form.type = props.product.type
-    form.supplierPrice = props.product.supplierPrice
-    form.stock = props.product.stock
+    form.code = props.product.code || ''
+    form.description = props.product.description || ''
+    form.type = props.product.type || ''
+    form.supplierValue = props.product.supplierPrice || 0
+    form.stockQuantity = props.product.stock || 0
     errors.value = {}
   }
 })
@@ -194,8 +191,8 @@ watch(() => props.show, (newVal) => {
 const validateForm = () => {
   const newErrors: Record<string, string> = {}
   
-  if (!form.name.trim()) {
-    newErrors.name = 'Nome é obrigatório'
+  if (!form.code.trim()) {
+    newErrors.code = 'Código é obrigatório'
   }
   
   if (!form.type) {
@@ -206,12 +203,12 @@ const validateForm = () => {
     newErrors.description = 'Descrição é obrigatória'
   }
   
-  if (form.supplierPrice <= 0) {
-    newErrors.supplierPrice = 'Preço de fornecedor deve ser maior que zero'
+  if (form.supplierValue <= 0) {
+    newErrors.supplierValue = 'Preço de fornecedor deve ser maior que zero'
   }
   
-  if (form.stock < 0) {
-    newErrors.stock = 'Estoque não pode ser negativo'
+  if (form.stockQuantity < 0) {
+    newErrors.stockQuantity = 'Estoque não pode ser negativo'
   }
   
   errors.value = newErrors
@@ -238,12 +235,11 @@ const handleSubmit = async () => {
   try {
     // Manter os campos originais que não estão no formulário
     const formData = {
-      ...props.product,
-      name: form.name,
+      code: form.code,
       description: form.description,
       type: form.type,
-      supplierPrice: form.supplierPrice,
-      stock: form.stock
+      supplierValue: Number(form.supplierValue),
+      stockQuantity: Number(form.stockQuantity)
     }
     
     await productStore.updateProduct(props.product.id, formData)

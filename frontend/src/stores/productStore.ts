@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Product, ProductSearchFilters } from '../interfaces'
 import { productsAPI } from '../services/api'
+import { mapProductToBackend } from '../services/adapters'
 
 export const useProductStore = defineStore('products', () => {
   const products = ref<Product[]>([])
@@ -72,16 +73,13 @@ export const useProductStore = defineStore('products', () => {
     }
   }
 
-  async function addProduct(productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<Product | null> {
+  async function addProduct(productData: any): Promise<Product | null> {
     isLoading.value = true
     error.value = null
     try {
-      const response = await productsAPI.create({
-        ...productData,
-        code: productData.name,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      })
+      // Sempre usar o adaptador para garantir payload correto
+      const payload = mapProductToBackend(productData)
+      const response = await productsAPI.create(payload)
       const newProduct = response.data as Product
       products.value.push(newProduct)
       return newProduct
@@ -110,11 +108,9 @@ export const useProductStore = defineStore('products', () => {
     isLoading.value = true
     error.value = null
     try {
-      const response = await productsAPI.update(id, {
-        ...data,
-        code: data.name,
-        updatedAt: new Date().toISOString()
-      })
+      // Sempre usar o adaptador para garantir payload correto
+      const payload = mapProductToBackend(data)
+      const response = await productsAPI.update(id, payload)
       const updatedProduct = response.data as Product
       const index = products.value.findIndex(p => p.id === id)
       if (index !== -1) {
