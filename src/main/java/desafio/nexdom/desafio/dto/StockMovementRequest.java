@@ -17,6 +17,9 @@ public class StockMovementRequest {
     @DecimalMin(value = "0.01", message = "O valor de venda deve ser maior que zero")
     private BigDecimal saleValue;
     
+    @io.swagger.v3.oas.annotations.media.Schema(description = "Valor de compra do produto", example = "10.50")
+    private BigDecimal purchaseValue;
+    
     @NotNull(message = "A quantidade é obrigatória")
     @Min(value = 1, message = "A quantidade deve ser maior que zero")
     private Integer quantity;

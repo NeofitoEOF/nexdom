@@ -85,14 +85,14 @@ O sistema Nexdom utiliza uma arquitetura moderna, desacoplada e escalável, comp
 - Toda a navegação e manipulação de dados é feita de forma reativa e tipada, garantindo robustez e UX fluida.
 
 ### Integração
-- O frontend espera a API backend rodando em `http://localhost:8080` (ajustável).
+- O frontend espera a API backend rodando em `http://localhost:8081` (ajustável).
 - CORS e autenticação podem ser facilmente integrados.
 - O deploy pode ser feito de forma independente ou integrada via Docker Compose.
 
 ---
 
 ## Integração com Backend
-- O frontend consome a API REST em Java (Spring Boot) rodando normalmente em `http://localhost:8080`.
+- O frontend consome a API REST em Java (Spring Boot) rodando normalmente em `http://localhost:8081`.
 - Configure a URL base da API em `src/services/api.ts` se necessário.
 - Para ambiente Docker, garanta que as portas estejam expostas e CORS habilitado no backend.
 

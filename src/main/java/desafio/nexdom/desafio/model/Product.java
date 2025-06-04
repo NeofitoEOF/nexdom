@@ -30,4 +30,7 @@ public class Product {
     @NotNull
     @Min(0)
     private Integer stockQuantity;
+    
+    @Version
+    private Long version;
 }

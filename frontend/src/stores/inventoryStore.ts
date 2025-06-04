@@ -7,10 +7,22 @@ import { ApiGroupedMovement, UIGroupedMovement } from '../interfaces'
 import { stockMovementsAPI } from '../services/api'
 import { mapTransactionFromBackend } from '../services/adapters'
 
+interface DashboardStats {
+  totalStockValue: number;
+  topProfitProducts: {
+    id: number;
+    code: string;
+    description: string;
+    totalProfit: number;
+    totalSold: number;
+  }[];
+}
+
 export const useInventoryStore = defineStore('inventory', () => {
   const transactions = ref<InventoryTransaction[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  const dashboardStats = ref<DashboardStats | null>(null)
 
   const productStore = useProductStore()
 
@@ -54,17 +66,11 @@ export const useInventoryStore = defineStore('inventory', () => {
     }
   }
 
-  /**
-   * Adiciona uma nova transação de estoque
-   * @param transaction - Dados da transação a ser adicionada
-   * @returns Objeto com status de sucesso e mensagem
-   */
   async function addTransaction(transaction: any) {
     isLoading.value = true
     error.value = null
 
     try {
-      // Validação de estoque para saídas
       if (transaction.type === 'output') {
         const stockResult = productStore.updateStock(transaction.productId, -transaction.quantity)
         if (!stockResult.success) {
@@ -100,7 +106,6 @@ export const useInventoryStore = defineStore('inventory', () => {
           throw new Error('Resposta do servidor não contém ID da transação')
         }
       } catch (apiError: any) {
-        console.error('Erro na API ao criar transação:', apiError)
         let errorMessage = 'Erro ao salvar transação no servidor'
         
         if (apiError.response) {
@@ -314,6 +319,31 @@ export const useInventoryStore = defineStore('inventory', () => {
         fetchTransactions()
       }, 3000)
     }
+    
+    await fetchDashboardStats()
+  }
+  
+  async function fetchDashboardStats(): Promise<boolean> {
+    isLoading.value = true
+    error.value = null
+    try {
+      const response = await stockMovementsAPI.getDashboardStats()
+      dashboardStats.value = response.data as DashboardStats
+      return true
+    } catch (err: any) {
+      let errorMessage = 'Erro ao carregar estatísticas do dashboard'
+      if (err.response) {
+        errorMessage = `Erro ${err.response.status}: ${err.response.data?.message || 'Falha ao carregar dados'}`
+      } else if (err.request) {
+        errorMessage = 'Servidor não respondeu à requisição'
+      } else {
+        errorMessage = err.message || errorMessage
+      }
+      error.value = errorMessage
+      return false
+    } finally {
+      isLoading.value = false
+    }
   }
 
 
@@ -368,6 +398,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     transactions,
     isLoading,
     error,
+    dashboardStats,
     getTransactionsByProduct,
     getProductsWithProfitData,
     getInventoryStatsByType,
@@ -379,6 +410,7 @@ export const useInventoryStore = defineStore('inventory', () => {
     initialize,
     groupedMovements,
     fetchMovementsGroupedByProduct,
+    fetchDashboardStats,
     transactionsWithProductInfo
   }
 })

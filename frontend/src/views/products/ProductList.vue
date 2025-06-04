@@ -123,7 +123,6 @@ const refreshProducts = (): void => {
             <button @click="createProduct" class="text-primary-600 hover:text-primary-900 font-medium">Adicionar novo produto</button>.
           </div>
           
-          <!-- Modal de edição -->
           <ProductEditModal 
             :show="showEditModal" 
             :product="selectedProduct" 

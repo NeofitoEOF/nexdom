@@ -7,7 +7,6 @@ import desafio.nexdom.desafio.repository.StockMovementRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
-import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -50,9 +49,7 @@ public class ProductServiceImpl implements IProductService {
         if (product.getStockQuantity() != null && product.getStockQuantity() > 0) {
             throw new IllegalStateException("Não é possível excluir o produto enquanto o estoque for maior que zero.");
         }
-        // Remove todas as movimentações associadas ao produto
         stockMovementRepository.findByProduct_Id(id).forEach(stockMovementRepository::delete);
-        // Agora remove o produto
         productRepository.deleteById(id);
     }
 
@@ -77,6 +74,4 @@ public class ProductServiceImpl implements IProductService {
             .toList();
         return new org.springframework.data.domain.PageImpl<>(filtered, pageable, filtered.size());
     }
-
-
 }

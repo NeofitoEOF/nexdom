@@ -6,7 +6,7 @@ type TransactionCreatePayload = Omit<InventoryTransaction, 'id'>;
 type TransactionUpdatePayload = Partial<TransactionCreatePayload>;
 
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api',
+  baseURL: 'http://localhost:8081/api',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -26,7 +26,8 @@ export const stockMovementsAPI = {
   getById: (id: string) => api.get<InventoryTransaction>(`/stock-movements/${id}`),
   create: (data: TransactionCreatePayload) => api.post<InventoryTransaction>('/stock-movements', mapTransactionToBackend(data)),
   update: (id: string, data: TransactionUpdatePayload) => api.put<InventoryTransaction>(`/stock-movements/${id}`, mapTransactionToBackend(data)),
-  delete: (id: string) => api.delete(`/stock-movements/${id}`)
+  delete: (id: string) => api.delete(`/stock-movements/${id}`),
+  getDashboardStats: () => api.get('/stock-movements/dashboard/stats')
 };
 
 export default api;

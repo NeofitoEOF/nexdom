@@ -67,7 +67,6 @@ class ProductServiceTest {
 
     @Test
     void testDeleteProduct() {
-        // Simula produto existente com estoque zero
         testProduct.setStockQuantity(0);
         when(productRepository.findById(1L)).thenReturn(Optional.of(testProduct));
         when(stockMovementRepository.findByProduct_Id(1L)).thenReturn(List.of());

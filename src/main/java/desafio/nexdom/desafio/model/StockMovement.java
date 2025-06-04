@@ -11,7 +11,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
-// getter e setter de purchaseValue serão gerados pelo Lombok
 @Entity
 @Table(name = "stock_movements")
 public class StockMovement {
@@ -33,10 +32,6 @@ public class StockMovement {
     @DecimalMin("0.01")
     private BigDecimal saleValue;
 
-    /**
-     * Valor de compra do produto na movimentação de ENTRADA.
-     * Para movimentações de SAÍDA, pode ser nulo.
-     */
     @Column(precision = 19, scale = 2)
     private BigDecimal purchaseValue;
 

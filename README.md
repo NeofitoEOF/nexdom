@@ -2,7 +2,7 @@
 
 ## Descrição
 
-Este projeto é uma API RESTful para controle de estoque de produtos, desenvolvida com Spring Boot. A aplicação permite o cadastro de produtos de diferentes tipos, controle de entrada e saída de estoque, e cálculo de lucro por produto.
+Este projeto é uma API RESTful para controle de estoque de produtos, desenvolvida com Spring Boot. A aplicação permite o cadastro de produtos de diferentes tipos, controle de entrada e saída de estoque, e cálculo de lucro por produto. O sistema utiliza padrões modernos de desenvolvimento como DTO, HATEOAS e tratamento global de exceções.
 
 ## Funcionalidades
 
@@ -10,15 +10,21 @@ Este projeto é uma API RESTful para controle de estoque de produtos, desenvolvi
 - Entrada e saída de produtos no estoque com validação de saldo
 - Consulta de produtos por tipo
 - Cálculo de lucro por produto (valor de venda - valor do fornecedor)
+- Paginação e ordenação de resultados
+- Respostas enriquecidas com HATEOAS para melhor navegabilidade
+- Validação de dados de entrada
+- Tratamento global de exceções com mensagens amigáveis
 
 ## Tecnologias utilizadas
 
 - Java 21
 - Spring Boot 3.2.3
 - Spring Data JPA
+- Spring HATEOAS
 - H2 Database (banco de dados em memória)
 - Swagger/OpenAPI para documentação da API
 - Docker para containerização
+- JUnit 5 e Mockito para testes automatizados
 
 ## Como executar
 
@@ -28,7 +34,7 @@ Este projeto é uma API RESTful para controle de estoque de produtos, desenvolvi
 docker-compose up --build
 ```
 
-A aplicação estará disponível em http://localhost:8080
+A aplicação estará disponível em http://localhost:8081
 
 ### Sem Docker
 
@@ -40,7 +46,7 @@ A aplicação estará disponível em http://localhost:8080
 
 ### Usando o Swagger UI
 
-Acesse a documentação interativa da API em http://localhost:8080/swagger-ui/index.html
+Acesse a documentação interativa da API em http://localhost:8081/swagger-ui/index.html
 
 ### Usando a Collection do Postman
 
@@ -67,30 +73,33 @@ src
 │   │   └── desafio
 │   │       └── nexdom
 │   │           └── desafio
-│   │               ├── config
-│   │               ├── controller
-│   │               ├── exception
-│   │               ├── model
-│   │               ├── repository
-│   │               └── service
+│   │               ├── config            # Configurações da aplicação
+│   │               ├── controller        # Controladores REST
+│   │               ├── dto               # Data Transfer Objects
+│   │               ├── exception         # Exceções personalizadas e handler global
+│   │               ├── hateoas           # Classes relacionadas ao HATEOAS
+│   │               ├── interfaces        # Interfaces de serviço
+│   │               ├── model             # Entidades JPA
+│   │               ├── repository        # Repositórios Spring Data
+│   │               └── service           # Implementações de serviço
 │   └── resources
 └── test
     └── java
         └── desafio
             └── nexdom
                 └── desafio
-                    ├── controller
-                    └── service
+                    ├── controller        # Testes de controladores
+                    └── service           # Testes de serviços
 ```
 
-Este é um projeto Spring Boot com Java 21, dockerizado para facilitar o desenvolvimento e deploy.
+Este é um projeto Spring Boot com Java 21, dockerizado para facilitar o desenvolvimento e deploy. O projeto segue boas práticas de desenvolvimento como Clean Code, SOLID e testes automatizados.
 
 ## Requisitos
 
 - Docker (versão 20.10.0 ou superior)
 - Docker Compose (versão 2.0.0 ou superior)
 - Pelo menos 1GB de RAM disponível
-- Portas 8082 disponíveis no host
+- Portas 8081 e 3000 disponíveis no host
 
 ## Executando o projeto
 
@@ -112,8 +121,8 @@ docker logs -f desafio-app-1
 ```
 
 A aplicação estará disponível em:
-- API: http://localhost:8080
-- Console H2 (banco de dados): http://localhost:8080/h2-console
+- API: http://localhost:8081
+- Console H2 (banco de dados): http://localhost:8081/h2-console
   - JDBC URL: jdbc:h2:mem:testdb
   - Usuário: sa
   - Senha: password
@@ -122,47 +131,60 @@ A aplicação estará disponível em:
 
 A API é documentada usando o SpringDoc OpenAPI (Swagger). Você pode acessar a documentação interativa em:
 
-- Swagger UI: http://localhost:8080/swagger-ui/index.html
-- Especificação OpenAPI (JSON): http://localhost:8080/v3/api-docs
-- Especificação OpenAPI (YAML): http://localhost:8080/v3/api-docs.yaml
+- Swagger UI: http://localhost:8081/swagger-ui/index.html
+- Especificação OpenAPI (JSON): http://localhost:8081/v3/api-docs
+- Especificação OpenAPI (YAML): http://localhost:8081/v3/api-docs.yaml
 
 A documentação permite visualizar todos os endpoints disponíveis, testar as requisições diretamente pela interface e verificar os modelos de dados utilizados.
 
 ## Endpoints da API
 
 ### Produtos
-- GET /api/products - Listar todos os produtos
-- GET /api/products/{id} - Obter um produto específico
-- POST /api/products - Criar um novo produto
-- PUT /api/products/{id} - Atualizar um produto existente
-- DELETE /api/products/{id} - Excluir um produto
+- `GET /api/products` - Listar todos os produtos (com paginação)
+- `GET /api/products/{id}` - Obter um produto específico
+- `GET /api/products/type/{type}` - Listar produtos por tipo (com paginação)
+- `POST /api/products` - Criar um novo produto
+- `PUT /api/products/{id}` - Atualizar um produto existente
+- `DELETE /api/products/{id}` - Excluir um produto
 
 ### Movimentações de Estoque
-- GET /api/stock-movements - Listar todas as movimentações de estoque
-- GET /api/stock-movements/{id} - Obter uma movimentação específica
-- POST /api/stock-movements - Criar uma nova movimentação
-- PUT /api/stock-movements/{id} - Atualizar uma movimentação existente
-- DELETE /api/stock-movements/{id} - Excluir uma movimentação
+- `GET /api/stock-movements` - Listar todas as movimentações de estoque (com paginação)
+- `GET /api/stock-movements/{id}` - Obter uma movimentação específica
+- `GET /api/stock-movements/product/{productId}` - Listar movimentações por produto (com paginação)
+- `GET /api/stock-movements/profit/{productId}` - Calcular lucro por produto
+- `POST /api/stock-movements` - Criar uma nova movimentação
+- `DELETE /api/stock-movements/{id}` - Excluir uma movimentação
 
-## Tecnologias utilizadas
+## Arquitetura e Padrões de Projeto
 
+O projeto segue uma arquitetura em camadas com as seguintes características:
+
+### Padrões de Projeto
+- **DTO (Data Transfer Object)**: Separa a representação externa da representação interna dos dados
+- **Repository Pattern**: Abstrai o acesso a dados através de interfaces Spring Data JPA
+- **Service Layer**: Encapsula a lógica de negócio
+- **HATEOAS**: Enriquece as respostas REST com links para navegação
+- **Command Query Separation**: Interfaces separadas para comandos e consultas
+- **Global Exception Handler**: Tratamento centralizado de exceções
+
+### Tecnologias
 - Java 21
 - Spring Boot 3.2.3
 - Spring Data JPA
+- Spring HATEOAS
 - H2 Database
 - Docker
 - Lombok
-- Mockito (para testes)
-- TestContainers (para testes)
+- JUnit 5 e Mockito para testes
 
 ## Solução de Problemas
 
 ### Problemas de CORS
 
-A aplicação já está configurada com filtros CORS para permitir requisições de qualquer origem. Se você encontrar problemas de CORS ao acessar o Swagger UI ou fazer requisições para a API, verifique:
+A aplicação está configurada com uma política CORS centralizada para permitir requisições de qualquer origem. Se você encontrar problemas de CORS ao acessar o Swagger UI ou fazer requisições para a API, verifique:
 
 1. Se o contêiner Docker está em execução (`docker ps`)
-2. Se a aplicação está acessível na porta 8082 (`curl -I http://localhost:8080`)
+2. Se a aplicação está acessível na porta 8081 (`curl -I http://localhost:8081`)
 3. Se os logs mostram algum erro (`docker logs -f desafio-app-1`)
 
 ### Parando a aplicação
@@ -181,3 +203,27 @@ Para reiniciar a aplicação após fazer alterações no código:
 docker-compose down
 docker-compose up -d
 ```
+
+## Melhorias Recentes
+
+### Refatoração e Limpeza de Código
+- Remoção de classes não utilizadas
+- Consolidação das configurações CORS em uma única classe
+- Unificação da configuração OpenAPI/Swagger
+- Correção e atualização de testes para usar DTOs e HATEOAS
+
+### Testes
+- Testes unitários para serviços
+- Testes de integração para controladores
+- Testes de fluxo para validar cenários completos
+
+### Documentação
+- Documentação detalhada via Swagger/OpenAPI
+- Comentários Javadoc em classes e métodos importantes
+- README atualizado com informações detalhadas sobre o projeto
+
+## Próximos Passos
+- Implementação de autenticação e autorização
+- Migração para um banco de dados persistente
+- Implementação de cache para melhorar performance
+- Monitoramento e logging avançados

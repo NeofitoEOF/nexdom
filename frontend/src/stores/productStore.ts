@@ -77,7 +77,6 @@ export const useProductStore = defineStore('products', () => {
     isLoading.value = true
     error.value = null
     try {
-      // Sempre usar o adaptador para garantir payload correto
       const payload = mapProductToBackend(productData)
       const response = await productsAPI.create(payload)
       const newProduct = response.data as Product
@@ -108,7 +107,6 @@ export const useProductStore = defineStore('products', () => {
     isLoading.value = true
     error.value = null
     try {
-      // Sempre usar o adaptador para garantir payload correto
       const payload = mapProductToBackend(data)
       const response = await productsAPI.update(id, payload)
       const updatedProduct = response.data as Product
@@ -188,8 +186,6 @@ export const useProductStore = defineStore('products', () => {
     
     return { success: true }
   }
-
-
 
 
   return {

@@ -3,6 +3,7 @@ package desafio.nexdom.desafio.service;
 import desafio.nexdom.desafio.exception.InsufficientStockException;
 import desafio.nexdom.desafio.interfaces.IProductService;
 import desafio.nexdom.desafio.model.Product;
+import desafio.nexdom.desafio.dto.ProfitResultDto;
 import desafio.nexdom.desafio.model.StockMovement;
 import desafio.nexdom.desafio.model.MovementType;
 import desafio.nexdom.desafio.repository.ProductRepository;
@@ -87,7 +88,6 @@ class StockMovementServiceTest {
 
     @Test
     void testCalculateProfit() {
-        // Entrada (compra): 5 unidades a 100 (purchaseValue)
         StockMovement entryMovement = new StockMovement();
         entryMovement.setProduct(testProduct);
         entryMovement.setMovementType(MovementType.ENTRADA);
@@ -96,7 +96,6 @@ class StockMovementServiceTest {
         entryMovement.setQuantity(5);
         entryMovement.setDescription("Compra inicial");
 
-        // Saída (venda): 5 unidades a 200
         StockMovement exitMovement = new StockMovement();
         exitMovement.setProduct(testProduct);
         exitMovement.setMovementType(MovementType.SAIDA);
@@ -111,12 +110,11 @@ class StockMovementServiceTest {
         BigDecimal profit = stockMovementService.calculateProfit(1L);
 
         assertNotNull(profit);
-        assertEquals(BigDecimal.valueOf(500), profit); // (5*200) - (5*100)
+        assertEquals(BigDecimal.valueOf(500), profit); 
     }
 
     @Test
     void testCalculateProfitWithSupplierValue() {
-        // Entrada (compra): 2 unidades sem purchaseValue (deve usar supplierValue=100)
         StockMovement entryMovement = new StockMovement();
         entryMovement.setProduct(testProduct);
         entryMovement.setMovementType(MovementType.ENTRADA);
@@ -124,7 +122,6 @@ class StockMovementServiceTest {
         entryMovement.setQuantity(2);
         entryMovement.setDescription("Compra sem valor explícito");
 
-        // Saída (venda): 2 unidades a 150
         StockMovement exitMovement = new StockMovement();
         exitMovement.setProduct(testProduct);
         exitMovement.setMovementType(MovementType.SAIDA);
@@ -138,12 +135,11 @@ class StockMovementServiceTest {
 
         BigDecimal profit = stockMovementService.calculateProfit(1L);
         assertNotNull(profit);
-        assertEquals(BigDecimal.valueOf(100), profit); // (2*150) - (2*100)
+        assertEquals(BigDecimal.valueOf(100), profit);
     }
 
     @Test
     void testCalculateProfitWithOptimizedMethod() {
-        // Entrada 1: 2 unidades a 120
         StockMovement entry1 = new StockMovement();
         entry1.setProduct(testProduct);
         entry1.setMovementType(MovementType.ENTRADA);
@@ -152,7 +148,6 @@ class StockMovementServiceTest {
         entry1.setQuantity(2);
         entry1.setDescription("Compra otimizada");
 
-        // Saída 1: 2 unidades a 200
         StockMovement exit1 = new StockMovement();
         exit1.setProduct(testProduct);
         exit1.setMovementType(MovementType.SAIDA);
@@ -164,15 +159,14 @@ class StockMovementServiceTest {
         when(stockMovementRepository.findByProduct_IdOrderByMovementDateAsc(1L)).thenReturn(java.util.List.of(entry1, exit1));
         when(productRepository.findById(1L)).thenReturn(Optional.of(testProduct));
 
-        var result = stockMovementService.calculateProfitAndTotalSoldOptimized(1L);
+        var result = stockMovementService.calculateProfitAndTotalSold(1L);
         assertNotNull(result);
-        assertEquals(BigDecimal.valueOf(160), result.getProfit()); // (2*200) - (2*120)
+        assertEquals(BigDecimal.valueOf(160), result.getProfit()); 
         assertEquals(2, result.getTotalSold());
     }
     
     @Test
     void testCalculateProfitWithMultipleMovements() {
-        // Entrada 1: 3 unidades a 100
         StockMovement entry1 = new StockMovement();
         entry1.setProduct(testProduct);
         entry1.setMovementType(MovementType.ENTRADA);
@@ -181,7 +175,6 @@ class StockMovementServiceTest {
         entry1.setQuantity(3);
         entry1.setDescription("Compra lote 1");
 
-        // Entrada 2: 2 unidades a 120
         StockMovement entry2 = new StockMovement();
         entry2.setProduct(testProduct);
         entry2.setMovementType(MovementType.ENTRADA);
@@ -190,7 +183,6 @@ class StockMovementServiceTest {
         entry2.setQuantity(2);
         entry2.setDescription("Compra lote 2");
 
-        // Saída 1: 3 unidades vendidas a 200
         StockMovement exit1 = new StockMovement();
         exit1.setProduct(testProduct);
         exit1.setMovementType(MovementType.SAIDA);
@@ -199,7 +191,6 @@ class StockMovementServiceTest {
         exit1.setQuantity(3);
         exit1.setDescription("Venda 1");
 
-        // Saída 2: 2 unidades vendidas a 250
         StockMovement exit2 = new StockMovement();
         exit2.setProduct(testProduct);
         exit2.setMovementType(MovementType.SAIDA);
@@ -214,15 +205,11 @@ class StockMovementServiceTest {
         BigDecimal profit = stockMovementService.calculateProfit(1L);
 
         assertNotNull(profit);
-        // FIFO: (3*100 + 2*120) = 300 + 240 = 540 (custo)
-        // Receita: (3*200 + 2*250) = 600 + 500 = 1100
-        // Lucro: 1100 - 540 = 560
         assertEquals(BigDecimal.valueOf(560), profit);
     }
 
     @Test
     void testCalculateProfitWithInsufficientEntries() {
-        // Entrada: 2 unidades a 100
         StockMovement entry = new StockMovement();
         entry.setProduct(testProduct);
         entry.setMovementType(MovementType.ENTRADA);
@@ -231,7 +218,6 @@ class StockMovementServiceTest {
         entry.setQuantity(2);
         entry.setDescription("Compra pequena");
 
-        // Saída: 5 unidades a 200 (mais do que disponível nas entradas)
         StockMovement exit = new StockMovement();
         exit.setProduct(testProduct);
         exit.setMovementType(MovementType.SAIDA);
@@ -246,5 +232,114 @@ class StockMovementServiceTest {
         assertThrows(desafio.nexdom.desafio.exception.InsufficientEntryStockForProfitException.class, () -> {
             stockMovementService.calculateProfit(1L);
         });
+    }
+    
+    @Test
+    void testCalculateProfitWithOnlyEntryMovements() {
+        StockMovement entry1 = new StockMovement();
+        entry1.setProduct(testProduct);
+        entry1.setMovementType(MovementType.ENTRADA);
+        entry1.setPurchaseValue(BigDecimal.valueOf(100));
+        entry1.setMovementDate(LocalDateTime.now().minusDays(2));
+        entry1.setQuantity(5);
+        entry1.setDescription("Investimento inicial");
+        
+        StockMovement entry2 = new StockMovement();
+        entry2.setProduct(testProduct);
+        entry2.setMovementType(MovementType.ENTRADA);
+        entry2.setPurchaseValue(BigDecimal.valueOf(120));
+        entry2.setMovementDate(LocalDateTime.now().minusDays(1));
+        entry2.setQuantity(3);
+        entry2.setDescription("Investimento adicional");
+        
+        when(stockMovementRepository.findByProduct_IdOrderByMovementDateAsc(1L))
+            .thenReturn(java.util.List.of(entry1, entry2));
+        when(productRepository.findById(1L)).thenReturn(Optional.of(testProduct));
+        
+        BigDecimal profit = stockMovementService.calculateProfit(1L);
+        assertNotNull(profit);
+        assertEquals(BigDecimal.ZERO, profit, "O lucro deve ser zero quando há apenas movimentos de entrada");
+        
+        ProfitResultDto result = stockMovementService.calculateProfitAndTotalSold(1L);
+        assertNotNull(result);
+        assertEquals(BigDecimal.ZERO, result.getProfit(), "O lucro deve ser zero quando há apenas movimentos de entrada");
+        assertEquals(0, result.getTotalSold(), "Total vendido deve ser zero quando há apenas movimentos de entrada");
+    }
+    
+    @Test
+    void testCalculateProfitAndTotalSoldWithFIFO() {
+        // Cenário: Entradas com valores diferentes seguidas de saídas
+        // Deve usar o método FIFO para calcular o custo das saídas
+        
+        // Configurar produto
+        Product product = new Product();
+        product.setId(1L);
+        product.setCode("IPHONE15");
+        product.setDescription("iPhone 15 Pro Max");
+        product.setType("Eletrônico");
+        product.setSupplierValue(BigDecimal.valueOf(4000.00));
+        product.setStockQuantity(10);
+        
+        // Primeira entrada: 10 unidades a 3000.00 cada
+        StockMovement entry1 = new StockMovement();
+        entry1.setId(1L);
+        entry1.setProduct(product);
+        entry1.setMovementType(MovementType.ENTRADA);
+        entry1.setPurchaseValue(BigDecimal.valueOf(3000.00));
+        entry1.setSaleValue(BigDecimal.valueOf(5000.00));
+        entry1.setMovementDate(LocalDateTime.now().minusDays(5));
+        entry1.setQuantity(10);
+        entry1.setDescription("Entrada inicial");
+        
+        // Segunda entrada: 5 unidades a 3500.00 cada
+        StockMovement entry2 = new StockMovement();
+        entry2.setId(2L);
+        entry2.setProduct(product);
+        entry2.setMovementType(MovementType.ENTRADA);
+        entry2.setPurchaseValue(BigDecimal.valueOf(3500.00));
+        entry2.setSaleValue(BigDecimal.valueOf(5500.00));
+        entry2.setMovementDate(LocalDateTime.now().minusDays(3));
+        entry2.setQuantity(5);
+        entry2.setDescription("Segunda entrada");
+        
+        // Primeira saída: 8 unidades a 5800.00 cada
+        // Deve consumir 8 unidades da primeira entrada (a 3000.00 cada)
+        StockMovement exit1 = new StockMovement();
+        exit1.setId(3L);
+        exit1.setProduct(product);
+        exit1.setMovementType(MovementType.SAIDA);
+        exit1.setSaleValue(BigDecimal.valueOf(5800.00));
+        exit1.setMovementDate(LocalDateTime.now().minusDays(2));
+        exit1.setQuantity(8);
+        exit1.setDescription("Primeira venda");
+        
+        // Segunda saída: 4 unidades a 6000.00 cada
+        // Deve consumir 2 unidades da primeira entrada (a 3000.00 cada) e 2 unidades da segunda entrada (a 3500.00 cada)
+        StockMovement exit2 = new StockMovement();
+        exit2.setId(4L);
+        exit2.setProduct(product);
+        exit2.setMovementType(MovementType.SAIDA);
+        exit2.setSaleValue(BigDecimal.valueOf(6000.00));
+        exit2.setMovementDate(LocalDateTime.now().minusDays(1));
+        exit2.setQuantity(4);
+        exit2.setDescription("Segunda venda");
+        
+        // Configurar mocks
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(stockMovementRepository.findByProduct_IdOrderByMovementDateAsc(1L))
+            .thenReturn(java.util.List.of(entry1, entry2, exit1, exit2));
+        
+        // Executar o método a ser testado
+        ProfitResultDto result = stockMovementService.calculateProfitAndTotalSold(1L);
+        
+        // Verificações
+        assertNotNull(result);
+        
+        // Cálculo esperado:
+        // Receita: (8 * 5800.00) + (4 * 6000.00) = 46400.00 + 24000.00 = 70400.00
+        // Custo: (8 * 3000.00) + (2 * 3000.00) + (2 * 3500.00) = 24000.00 + 6000.00 + 7000.00 = 37000.00
+        // Lucro: 70400.00 - 37000.00 = 33400.00
+        assertEquals(BigDecimal.valueOf(33400.00), result.getProfit());
+        assertEquals(12, result.getTotalSold());
     }
 }

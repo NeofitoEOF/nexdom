@@ -8,28 +8,14 @@ import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.lang.NonNull;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.List;
 
 @Configuration
-public class OpenApiConfig implements WebMvcConfigurer {
+public class OpenApiConfig {
 
-    @Value("${server.port:8080}")
+    @Value("${server.port:8081}")
     private String serverPort;
-
-    @Override
-    public void addCorsMappings(@NonNull CorsRegistry registry) {
-        registry.addMapping("/**")
-                .allowedOrigins("*")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "TRACE", "CONNECT")
-                .allowedHeaders("*")
-                .exposedHeaders("*")
-                .allowCredentials(false)
-                .maxAge(3600);
-    }
 
     @Bean
     public OpenAPI openAPI() {

@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useProductStore } from '../../stores/productStore'
 import { useInventoryStore } from '../../stores/inventoryStore'
-import BaseSelect from '../../components/BaseSelect.vue'
 import { getTypeDisplayName } from '../../utils/productTypes'
 import { formatCurrency, formatNumber } from '../../utils/formatters'
 
-const router = useRouter()
 const productStore = useProductStore()
 const inventoryStore = useInventoryStore()
 
@@ -47,18 +44,18 @@ interface ProfitSubtotal {
 
 const subtotalByType = computed<Record<string, ProfitSubtotal & { margin: string }>>(() => {
   const result: Record<string, ProfitSubtotal & { margin: string }> = {}
-  const products = productStore.products
-  const grouped = products.reduce<Record<string, typeof products>>((acc, p) => {
-    if (!acc[p.type]) acc[p.type] = []
-    acc[p.type].push(p)
+  const produtos = produtosLucroBackend.value
+  const grouped = produtos.reduce<Record<string, typeof produtos>>((acc, p) => {
+    if (!acc[p.tipo]) acc[p.tipo] = []
+    acc[p.tipo].push(p)
     return acc
   }, {})
   Object.entries(grouped).forEach(([type, products]) => {
-    let totalAvailable = products.reduce((sum, p) => sum + (p.stock ?? 0), 0)
-    let totalSold = products.reduce((sum, p) => sum + (p.totalSold ?? 0), 0)
-    let totalSalesValue = products.reduce((sum, p) => sum + (p.totalSalesValue ?? 0), 0)
-    let totalCost = products.reduce((sum, p) => sum + (p.totalCost ?? 0), 0)
-    let totalProfit = products.reduce((sum, p) => sum + (p.totalProfit ?? 0), 0)
+    let totalAvailable = products.reduce((sum, p) => sum + (p.qtdDisponivel ?? 0), 0)
+    let totalSold = products.reduce((sum, p) => sum + (p.qtdVendida ?? 0), 0)
+    let totalSalesValue = products.reduce((sum, p) => sum + (p.receitaTotal ?? 0), 0)
+    let totalCost = products.reduce((sum, p) => sum + (p.custoTotal ?? 0), 0)
+    let totalProfit = products.reduce((sum, p) => sum + (p.lucroTotal ?? 0), 0)
 
     totalAvailable = Math.max(totalAvailable, 0)
     totalSold = Math.max(totalSold, 0)
@@ -98,9 +95,6 @@ const filteredProdutosLucro = computed(() => {
   )
 })
 
-const totalAvailable = computed(() =>
-  filteredProdutosLucro.value.reduce((sum, p) => sum + p.qtdDisponivel, 0)
-)
 const totalSold = computed(() =>
   filteredProdutosLucro.value.reduce((sum, p) => sum + p.qtdVendida, 0)
 )
@@ -112,9 +106,6 @@ const totalCost = computed(() =>
 )
 const totalProfit = computed(() =>
   filteredProdutosLucro.value.reduce((sum, p) => sum + p.lucroTotal, 0)
-)
-const averageProfitMargin = computed(() =>
-  totalCost.value > 0 ? (totalProfit.value / totalCost.value) * 100 : 0
 )
 
 interface MovimentoEstoque {
@@ -135,17 +126,13 @@ interface ProdutoLucro {
   qtdDisponivel: number;
   qtdVendida: number;
   receitaTotal: number;
+  precoMedioVenda: number;
+  custoTotal: number;
   lucroUnitario: number;
   lucroTotal: number;
   margem: string;
 }
 
-interface TotalMetrics {
-  products: number;
-  sold: number;
-  revenue: number;
-  profit: number;
-}
 
 const produtosLucroBackend = computed<ProdutoLucro[]>(() => {
   const produtos = productStore.products
@@ -158,7 +145,6 @@ const produtosLucroBackend = computed<ProdutoLucro[]>(() => {
     const nome = produto.code || produto.name || produto.description || '—'
     const tipo = produto.type || '—'
     const supplierValue = produto.supplierPrice || 0
-    const qtdEstoque = produto.stock || 0
 
     const entradas = transacoes.filter(t => String(t.productId) === String(id) && (t.type === 'input'))
     const saidas = transacoes.filter(t => String(t.productId) === String(id) && (t.type === 'output'))

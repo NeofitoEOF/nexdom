@@ -1,9 +1,4 @@
 <script setup lang="ts">
-/**
- * @component InventoryTransactions
- * @description Componente para gerenciamento de movimentações de estoque (entradas e saídas)
- * Permite adicionar novas movimentações, visualizar histórico e calcular estatísticas de lucro
- */
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProductStore } from '../../stores/productStore'
@@ -14,13 +9,10 @@ import BaseInput from '../../components/BaseInput.vue'
 import BaseSelect from '../../components/BaseSelect.vue'
 import BaseButton from '../../components/BaseButton.vue'
 import BaseForm from '../../components/BaseForm.vue'
-import { formatCurrency, formatNumber } from '../../utils/formatters'
-import type { Product, InventoryTransaction, ProductWithProfit } from '../../interfaces'
+import { formatCurrency } from '../../utils/formatters'
+import type { Product, InventoryTransaction } from '../../interfaces'
 
-/**
- * Manipula a entrada de valores monetários, formatando-os adequadamente
- * @param event - Evento de input
- */
+
 const handleValueInput = (event: Event): void => {
   const input = (event.target as HTMLInputElement).value
   const numbers = input.replace(/\D/g, '')
@@ -29,11 +21,6 @@ const handleValueInput = (event: Event): void => {
   formattedValue.value = numberValue ? `R$ ${numberValue.toFixed(2).replace('.', ',')}` : 'R$ 0'
 }
 
-/**
- * Traduz os tipos de movimentação para exibição na interface
- * @param tipo - Tipo de movimentação (input/output/ENTRADA/SAIDA)
- * @returns String traduzida para exibição
- */
 const traduzirTipoMovimentacao = (tipo: string): string => {
   const traducoes: Record<string, string> = {
     'input': 'Entrada',
@@ -50,10 +37,6 @@ const traduzirTipoMovimentacao = (tipo: string): string => {
 const router = useRouter()
 const productStore = useProductStore()
 
-/**
- * Estado para controlar a visualização da análise de lucro (simplificada ou detalhada)
- */
-const showSimpleView = ref(true)
 const inventoryStore = useInventoryStore()
 
 const selectedProductId = ref('')
@@ -124,6 +107,14 @@ const handleTransaction = async (): Promise<void> => {
       error.value = `Estoque insuficiente. Disponível: ${selectedProduct.value.stock}`
       return
     }
+    
+    const productTransactions = inventoryStore.getTransactionsByProduct(selectedProductId.value)
+    const hasEntryMovements = productTransactions.some((t: any) => t.type === 'input')
+    
+    if (!hasEntryMovements) {
+      error.value = 'Não é possível realizar uma saída sem antes registrar uma entrada para este produto'
+      return
+    }
   }
   
   error.value = ''
@@ -172,88 +163,7 @@ const viewProduct = (productId: string | number): void => {
   router.push(`/products/${productId}`)
 }
 
-
-const productsWithProfit = computed<ProductWithProfit[]>(() => {
-  return inventoryStore.getProductsWithProfitData
-})
-
-
-const productsByType = computed<Record<string, ProductWithProfit[]>>(() => {
-  const result: Record<string, ProductWithProfit[]> = {}
-  
-  productsWithProfit.value.forEach(product => {
-    if (!result[product.type]) {
-      result[product.type] = []
-    }
-    result[product.type].push(product)
-  })
-  
-  return result
-})
-
-
-interface ProfitSubtotal {
-  totalAvailable: number;
-  totalSold: number;
-  totalSalesValue: number;
-  totalCost: number;
-  totalProfit: number;
-}
-
-
-const subtotalByType = computed<Record<string, ProfitSubtotal>>(() => {
-  const result: Record<string, ProfitSubtotal> = {}
-  
-  Object.entries(productsByType.value).forEach(([type, products]) => {
-    const totalAvailable = products.reduce((sum, p) => sum + p.stock, 0)
-    const totalSold = products.reduce((sum, p) => sum + p.totalSold, 0)
-    const totalSalesValue = products.reduce((sum, p) => sum + p.totalSalesValue, 0)
-    const totalCost = products.reduce((sum, p) => sum + p.totalCost, 0)
-    const totalProfit = products.reduce((sum, p) => sum + p.totalProfit, 0)
-    
-    result[type] = { 
-      totalAvailable, 
-      totalSold, 
-      totalSalesValue,
-      totalCost,
-      totalProfit 
-    }
-  })
-  
-  return result
-})
-
-const totalAvailable = computed(() => {
-  return Object.values(subtotalByType.value).reduce((sum, data) => sum + data.totalAvailable, 0)
-})
-
-
-const totalSold = computed(() => {
-  return Object.values(subtotalByType.value).reduce((sum, data) => sum + data.totalSold, 0)
-})
-
-
-const totalSalesValue = computed(() => {
-  return Object.values(subtotalByType.value).reduce((sum, data) => sum + data.totalSalesValue, 0)
-})
-
-
-const totalCost = computed(() => {
-  return Object.values(subtotalByType.value).reduce((sum, data) => sum + data.totalCost, 0)
-})
-
-const totalProfit = computed(() => {
-  return Object.values(subtotalByType.value).reduce((sum, data) => sum + data.totalProfit, 0)
-})
-
-
-const averageProfitMargin = computed(() => {
-  return totalCost.value > 0 ? (totalProfit.value / totalCost.value) * 100 : 0
-})
-
-
 onMounted(async () => {
-  console.log('Montando componente InventoryTransactions')
   loading.value = true
   
   try {
@@ -262,9 +172,7 @@ onMounted(async () => {
       inventoryStore.initialize() 
     ])
     
-    console.log('Dados carregados com sucesso')
   } catch (err) {
-    console.error('Erro ao inicializar dados:', err)
     error.value = 'Erro ao carregar dados. Por favor, recarregue a página.'
   } finally {
     loading.value = false

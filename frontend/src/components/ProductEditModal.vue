@@ -1,10 +1,8 @@
 <template>
   <div v-if="show" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-      <!-- Background overlay -->
       <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" @click="closeModal"></div>
 
-      <!-- Modal panel -->
       <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
         <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
           <div class="sm:flex sm:items-start">
@@ -20,7 +18,6 @@
               
               <div class="mt-4">
                 <form @submit.prevent="handleSubmit" class="space-y-4">
-                  <!-- Código do produto -->
                   <div>
                     <label for="code" class="block text-sm font-medium text-gray-700">Código</label>
                     <input 
@@ -32,8 +29,6 @@
                     />
                     <p v-if="errors.code" class="mt-1 text-sm text-red-600">{{ errors.code }}</p>
                   </div>
-                  
-                  <!-- Tipo de produto -->
                   <div>
                     <label for="type" class="block text-sm font-medium text-gray-700">Tipo</label>
                     <select 
@@ -48,7 +43,6 @@
                     <p v-if="errors.type" class="mt-1 text-sm text-red-600">{{ errors.type }}</p>
                   </div>
                   
-                  <!-- Descrição -->
                   <div>
                     <label for="description" class="block text-sm font-medium text-gray-700">Descrição</label>
                     <textarea 
@@ -61,7 +55,6 @@
                     <p v-if="errors.description" class="mt-1 text-sm text-red-600">{{ errors.description }}</p>
                   </div>
                   
-                  <!-- Preço de fornecedor -->
                   <div>
                     <label for="supplierPrice" class="block text-sm font-medium text-gray-700">Preço de Fornecedor (R$)</label>
                     <div class="mt-1 relative rounded-md shadow-sm">
@@ -79,7 +72,6 @@
                     <p v-if="errors.supplierValue" class="mt-1 text-sm text-red-600">{{ errors.supplierValue }}</p>
                   </div>
                   
-                  <!-- Estoque -->
                   <div>
                     <label for="stockQuantity" class="block text-sm font-medium text-gray-700">Estoque</label>
                     <div class="mt-1 relative rounded-md shadow-sm">
@@ -98,7 +90,6 @@
                     <p v-if="errors.stockQuantity" class="mt-1 text-sm text-red-600">{{ errors.stockQuantity }}</p>
                   </div>
 
-                  <!-- Mensagem de erro -->
                   <div v-if="errors.submit" class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md">
                     <div class="flex">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -162,7 +153,6 @@ const emit = defineEmits<{
 const productStore = useProductStore()
 const productTypes = PRODUCT_TYPES
 
-// Estado do formulário
 const form = reactive({
   code: '',
   description: '',
@@ -171,11 +161,9 @@ const form = reactive({
   stockQuantity: 0
 })
 
-// Estado de erros e loading
 const errors = ref<Record<string, string>>({})
 const loading = ref(false)
 
-// Carregar dados do produto quando o modal abrir
 watch(() => props.show, (newVal) => {
   if (newVal && props.product) {
     form.code = props.product.code || ''
@@ -187,7 +175,6 @@ watch(() => props.show, (newVal) => {
   }
 })
 
-// Validação do formulário
 const validateForm = () => {
   const newErrors: Record<string, string> = {}
   
@@ -215,12 +202,10 @@ const validateForm = () => {
   return Object.keys(newErrors).length === 0
 }
 
-// Fechar o modal
 const closeModal = () => {
   emit('close')
 }
 
-// Enviar o formulário
 const handleSubmit = async () => {
   if (!validateForm()) {
     return
@@ -233,7 +218,6 @@ const handleSubmit = async () => {
   loading.value = true
   
   try {
-    // Manter os campos originais que não estão no formulário
     const formData = {
       code: form.code,
       description: form.description,

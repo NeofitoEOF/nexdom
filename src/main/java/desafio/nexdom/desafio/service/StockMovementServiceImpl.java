@@ -1,10 +1,15 @@
 package desafio.nexdom.desafio.service;
 
-import desafio.nexdom.desafio.dto.StockMovementDTO;
+import desafio.nexdom.desafio.dto.CreateStockMovementResponse;
+import desafio.nexdom.desafio.dto.DashboardStatsDto;
+import desafio.nexdom.desafio.dto.ProductProfitDto;
 import desafio.nexdom.desafio.dto.ProfitResultDto;
+import desafio.nexdom.desafio.dto.StockMovementDTO;
+import desafio.nexdom.desafio.dto.StockMovementRequest;
 import desafio.nexdom.desafio.exception.InsufficientEntryStockForProfitException;
 import desafio.nexdom.desafio.exception.InsufficientStockException;
 import desafio.nexdom.desafio.exception.ProductNotFoundException;
+import desafio.nexdom.desafio.hateoas.StockMovementModel;
 import desafio.nexdom.desafio.interfaces.IProductService;
 import desafio.nexdom.desafio.interfaces.IStockMovementService;
 import desafio.nexdom.desafio.model.Product;
@@ -14,10 +19,13 @@ import desafio.nexdom.desafio.repository.ProductRepository;
 import desafio.nexdom.desafio.repository.StockMovementRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDateTime;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
@@ -27,12 +35,92 @@ import org.springframework.data.domain.Pageable;
 public class StockMovementServiceImpl implements IStockMovementService {
 
     @Override
+    public StockMovementModel getMovementModelById(Long id) {
+        StockMovement movement = stockMovementRepository.findById(id)
+            .orElseThrow(() -> new ProductNotFoundException(id));
+        return StockMovementModel.fromStockMovement(movement);
+    }
+
+    @Override
+    @Transactional
+    public StockMovementModel updateMovement(Long id, StockMovementRequest request) {
+        StockMovement movement = stockMovementRepository.findById(id)
+            .orElseThrow(() -> new ProductNotFoundException(id));
+
+        movement.setMovementType(request.getMovementType());
+        movement.setSaleValue(request.getSaleValue());
+        movement.setPurchaseValue(request.getPurchaseValue());
+        movement.setQuantity(request.getQuantity());
+        movement.setDescription(request.getDescription());
+
+        if (request.getProductId() != null) {
+            Product product = productRepository.findById(request.getProductId())
+                .orElseThrow(() -> new ProductNotFoundException(request.getProductId()));
+            movement.setProduct(product);
+        }
+
+        validateStockMovementData(movement);
+        StockMovement updated = stockMovementRepository.save(movement);
+        return StockMovementModel.fromStockMovement(updated);
+    }
+
+    @Override
     public BigDecimal calculateProfit(Long productId) {
         ProfitResultDto result = calculateProfitAndTotalSold(productId);
         if (result == null) {
             return BigDecimal.ZERO;
         }
         return result.getProfit();
+    }
+    
+    @Override
+    @Transactional
+    public CreateStockMovementResponse createStockMovement(StockMovementRequest request) {
+        try {
+            Product product = productRepository.findById(request.getProductId())
+                .orElseThrow(() -> new ProductNotFoundException(request.getProductId()));
+            
+            StockMovement stockMovement = new StockMovement();
+            stockMovement.setProduct(product);
+            stockMovement.setMovementType(request.getMovementType());
+            stockMovement.setSaleValue(request.getSaleValue());
+            stockMovement.setPurchaseValue(request.getPurchaseValue());
+            stockMovement.setQuantity(request.getQuantity());
+            stockMovement.setMovementDate(LocalDateTime.now());
+            stockMovement.setDescription(request.getDescription());
+            
+            validateStockMovementData(stockMovement);
+            StockMovement savedMovement = stockMovementRepository.save(stockMovement);
+            updateProductStock(product, request.getMovementType(), request.getQuantity());
+            StockMovementModel model = StockMovementModel.fromStockMovement(savedMovement);
+            return new CreateStockMovementResponse(model, "Movimentação de estoque criada com sucesso");
+        } catch (ProductNotFoundException e) {
+            throw e;
+        } catch (InsufficientStockException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao criar movimentação de estoque: " + e.getMessage(), e);
+        }
+    }
+    
+    @Transactional
+    private void updateProductStock(Product product, MovementType movementType, int quantity) {
+        Product lockedProduct = productRepository.findByIdForUpdate(product.getId())
+                .orElseThrow(() -> new ProductNotFoundException(product.getId()));
+        
+        int currentStock = lockedProduct.getStockQuantity();
+        
+        if (movementType == MovementType.ENTRADA) {
+            lockedProduct.setStockQuantity(currentStock + quantity);
+        } else if (movementType == MovementType.SAIDA) {
+            if (currentStock < quantity) {
+                throw new InsufficientStockException("Estoque insuficiente para o produto ID " + lockedProduct.getId() + 
+                    ". Disponível: " + currentStock + ", Solicitado: " + quantity);
+            }
+            lockedProduct.setStockQuantity(currentStock - quantity);
+        }
+        
+        productRepository.save(lockedProduct);
     }
 
     private final StockMovementRepository stockMovementRepository;
@@ -131,158 +219,149 @@ public class StockMovementServiceImpl implements IStockMovementService {
 
     @Transactional(readOnly = true)
     public ProfitResultDto calculateProfitAndTotalSold(Long productId) {
-        productRepository.findById(productId)
+        Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ProductNotFoundException(productId));
-
+        
         List<StockMovement> movements = stockMovementRepository
                 .findByProduct_IdOrderByMovementDateAsc(productId);
-
+        
         if (movements.isEmpty()) {
             return new ProfitResultDto(BigDecimal.ZERO, 0);
         }
 
-        List<StockMovement> entradas = movements.stream()
-                .filter(m -> m.getMovementType() == MovementType.ENTRADA)
-                .collect(Collectors.toList());
-
-        List<StockMovement> saidas = movements.stream()
-                .filter(m -> m.getMovementType() == MovementType.SAIDA)
-                .collect(Collectors.toList());
-
-        if (saidas.isEmpty()) {
-            return new ProfitResultDto(BigDecimal.ZERO, 0);
-        }
-
-        int totalEntradas = entradas.stream().mapToInt(StockMovement::getQuantity).sum();
-        int totalSaidas = saidas.stream().mapToInt(StockMovement::getQuantity).sum();
-
-        if (totalSaidas > totalEntradas) {
-            throw new InsufficientEntryStockForProfitException(productId, totalSaidas, totalEntradas);
-        }
-
-        Queue<EntradaInfo> fifoQueue = new LinkedList<>();
-        for (StockMovement entrada : entradas) {
-            BigDecimal valorCompra = entrada.getPurchaseValue();
-            if (valorCompra == null) {
-                valorCompra = entrada.getProduct().getSupplierValue();
-            }
-            fifoQueue.offer(new EntradaInfo(entrada.getQuantity(), valorCompra));
-        }
-
-        BigDecimal totalReceita = BigDecimal.ZERO;
-        BigDecimal totalCusto = BigDecimal.ZERO;
-        int totalVendido = 0;
-
-        for (StockMovement saida : saidas) {
-            int quantidadeVenda = saida.getQuantity();
-            totalVendido += quantidadeVenda;
-
-            BigDecimal valorVenda = saida.getSaleValue();
-            if (valorVenda == null) {
-                valorVenda = saida.getProduct().getSupplierValue();
-            }
-            totalReceita = totalReceita.add(valorVenda.multiply(BigDecimal.valueOf(quantidadeVenda)));
-
-            int restanteParaVender = quantidadeVenda;
-            while (restanteParaVender > 0 && !fifoQueue.isEmpty()) {
-                EntradaInfo entrada = fifoQueue.peek();
-
-                int quantidadeConsumida = Math.min(restanteParaVender, entrada.getQuantidadeDisponivel());
-                BigDecimal custoConsumido = entrada.getValorUnitario()
-                        .multiply(BigDecimal.valueOf(quantidadeConsumida));
-
-                totalCusto = totalCusto.add(custoConsumido);
-                entrada.consumir(quantidadeConsumida);
-                restanteParaVender -= quantidadeConsumida;
-
-                if (entrada.getQuantidadeDisponivel() == 0) {
-                    fifoQueue.poll();
-                }
-            }
-        }
-
-        BigDecimal lucroTotal = totalReceita.subtract(totalCusto);
-        return new ProfitResultDto(lucroTotal, totalVendido);
+        Queue<Map.Entry<Integer, BigDecimal>> fifoQueue = new LinkedList<>();
+        processEntryMovements(product, movements, fifoQueue);
+        
+        FifoResult result = processExitMovements(product, productId, movements, fifoQueue);
+        
+        return new ProfitResultDto(result.getTotalRevenue().subtract(result.getTotalCost()), result.getTotalSold());
     }
 
-    @Transactional(readOnly = true)
-    public ProfitResultDto calculateProfitAndTotalSoldOptimized(Long productId) {
-        productRepository.findById(productId)
-                .orElseThrow(() -> new ProductNotFoundException(productId));
-        List<StockMovement> movements = stockMovementRepository
-                .findByProduct_IdOrderByMovementDateAsc(productId);
-        if (movements.isEmpty()) {
-            return new ProfitResultDto(BigDecimal.ZERO, 0);
-        }
+    private void processEntryMovements(Product product, List<StockMovement> movements, 
+        Queue<Map.Entry<Integer, BigDecimal>> fifoQueue) {
+        movements.stream()
+                .filter(movement -> movement.getMovementType() == MovementType.ENTRADA)
+                .forEach(movement -> {
+                    BigDecimal purchaseValue = Optional.ofNullable(movement.getPurchaseValue())
+                            .orElse(product.getSupplierValue());
+                    fifoQueue.offer(Map.entry(movement.getQuantity(), purchaseValue));
+                });
+    }
 
-        BigDecimal totalReceita = BigDecimal.ZERO;
-        BigDecimal totalCusto = BigDecimal.ZERO;
-        int totalVendido = 0;
-
-        Queue<Map.Entry<Integer, BigDecimal>> estoqueFifo = new LinkedList<>();
-
+    private FifoResult processExitMovements(Product product, Long productId, 
+        List<StockMovement> movements, Queue<Map.Entry<Integer, BigDecimal>> fifoQueue) {
+        BigDecimal totalRevenue = BigDecimal.ZERO;
+        BigDecimal totalCost = BigDecimal.ZERO;
+        int totalSold = 0;
+        
         for (StockMovement movement : movements) {
-            if (movement.getMovementType() == MovementType.ENTRADA) {
-                BigDecimal valorCompra = movement.getPurchaseValue() != null ? movement.getPurchaseValue()
-                        : movement.getProduct().getSupplierValue();
-                estoqueFifo.offer(Map.entry(movement.getQuantity(), valorCompra));
+            if (movement.getMovementType() == MovementType.SAIDA) {
+                int quantitySold = movement.getQuantity();
+                totalSold += quantitySold;
 
-            } else if (movement.getMovementType() == MovementType.SAIDA) {
-                int quantidadeVenda = movement.getQuantity();
-                totalVendido += quantidadeVenda;
+                BigDecimal saleValue = Optional.ofNullable(movement.getSaleValue())
+                        .orElse(product.getSupplierValue());
+                
+                BigDecimal movementRevenue = saleValue.multiply(BigDecimal.valueOf(quantitySold));
+                totalRevenue = totalRevenue.add(movementRevenue);
 
-                BigDecimal valorVenda = movement.getSaleValue() != null ? movement.getSaleValue()
-                        : movement.getProduct().getSupplierValue();
-                totalReceita = totalReceita.add(valorVenda.multiply(BigDecimal.valueOf(quantidadeVenda)));
+                int remaining = quantitySold;
+                
+                Queue<Map.Entry<Integer, BigDecimal>> tempFifo = new LinkedList<>(fifoQueue);
+                Queue<Map.Entry<Integer, BigDecimal>> updatedFifo = new LinkedList<>();
+                
+                while (remaining > 0 && !tempFifo.isEmpty()) {
+                    Map.Entry<Integer, BigDecimal> entry = tempFifo.poll();
+                    int available = entry.getKey();
+                    BigDecimal unitCost = entry.getValue();
 
-                int restante = quantidadeVenda;
-                while (restante > 0 && !estoqueFifo.isEmpty()) {
-                    Map.Entry<Integer, BigDecimal> entrada = estoqueFifo.peek();
-                    int disponivel = entrada.getKey();
-                    BigDecimal custoUnitario = entrada.getValue();
+                    int consumed = Math.min(remaining, available);
+                    BigDecimal partialCost = unitCost.multiply(BigDecimal.valueOf(consumed));
+                    totalCost = totalCost.add(partialCost);
+                    
+                    remaining -= consumed;
 
-                    int consumir = Math.min(restante, disponivel);
-                    totalCusto = totalCusto.add(custoUnitario.multiply(BigDecimal.valueOf(consumir)));
-
-                    restante -= consumir;
-
-                    if (consumir == disponivel) {
-                        estoqueFifo.poll();
-                    } else {
-                        estoqueFifo.poll();
-                        estoqueFifo.offer(Map.entry(disponivel - consumir, custoUnitario));
+                    if (consumed < available) {
+                        updatedFifo.offer(Map.entry(available - consumed, unitCost));
                     }
                 }
+                
+                while (!tempFifo.isEmpty()) {
+                    updatedFifo.offer(tempFifo.poll());
+                }
+                
+                fifoQueue = updatedFifo;
 
-                if (restante > 0) {
-                    throw new InsufficientEntryStockForProfitException(productId, quantidadeVenda,
-                            quantidadeVenda - restante);
+                if (remaining > 0) {
+                    throw new InsufficientEntryStockForProfitException(productId, quantitySold,
+                            quantitySold - remaining);
                 }
             }
         }
-        return new ProfitResultDto(totalReceita.subtract(totalCusto), totalVendido);
+        
+        return new FifoResult(totalRevenue, totalCost, totalSold);
     }
 
-    private static class EntradaInfo {
-        private int quantidadeDisponivel;
-        private final BigDecimal valorUnitario;
-
-        public EntradaInfo(int quantidade, BigDecimal valorUnitario) {
-            this.quantidadeDisponivel = quantidade;
-            this.valorUnitario = valorUnitario;
+    private static class FifoResult {
+        private final BigDecimal totalRevenue;
+        private final BigDecimal totalCost;
+        private final int totalSold;
+        
+        public FifoResult(BigDecimal totalRevenue, BigDecimal totalCost, int totalSold) {
+            this.totalRevenue = totalRevenue;
+            this.totalCost = totalCost;
+            this.totalSold = totalSold;
         }
-
-        public void consumir(int quantidade) {
-            this.quantidadeDisponivel -= quantidade;
+        
+        public BigDecimal getTotalRevenue() {
+            return totalRevenue;
         }
-
-        public int getQuantidadeDisponivel() {
-            return quantidadeDisponivel;
+        
+        public BigDecimal getTotalCost() {
+            return totalCost;
         }
-
-        public BigDecimal getValorUnitario() {
-            return valorUnitario;
+        
+        public int getTotalSold() {
+            return totalSold;
         }
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public DashboardStatsDto getDashboardStats() {
+        BigDecimal totalStockValue = BigDecimal.ZERO;
+        List<Product> allProducts = productRepository.findAll();
+        
+        for (Product product : allProducts) {
+            BigDecimal productStockValue = product.getSupplierValue()
+                    .multiply(BigDecimal.valueOf(product.getStockQuantity()));
+            totalStockValue = totalStockValue.add(productStockValue);
+        }
+        
+        List<ProductProfitDto> topProfitProducts = new ArrayList<>();
+        
+        for (Product product : allProducts) {
+            try {
+                ProfitResultDto profitResult = calculateProfitAndTotalSold(product.getId());
+                if (profitResult.getProfit().compareTo(BigDecimal.ZERO) > 0) {
+                    topProfitProducts.add(new ProductProfitDto(
+                            product.getId(),
+                            product.getCode(),
+                            product.getDescription(),
+                            profitResult.getProfit(),
+                            profitResult.getTotalSold()
+                    ));
+                }
+            } catch (Exception e) {
+            }
+        }
+        
+        topProfitProducts.sort((a, b) -> b.getTotalProfit().compareTo(a.getTotalProfit()));
+        if (topProfitProducts.size() > 5) {
+            topProfitProducts = topProfitProducts.subList(0, 5);
+        }
+        
+        return new DashboardStatsDto(totalStockValue, topProfitProducts);
     }
 
     @Transactional(readOnly = true)

@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useProductStore } from '../stores/productStore'
 import { useInventoryStore } from '../stores/inventoryStore'
 import { formatCurrency, formatNumber } from '../utils/formatters'
-import type { InventoryStatsByType, ProductWithProfit } from '../interfaces'
+import type { InventoryStatsByType } from '../interfaces'
 
 const router = useRouter()
 const productStore = useProductStore()
@@ -13,7 +13,7 @@ const inventoryStore = useInventoryStore()
 onMounted(async (): Promise<void> => {
   await Promise.all([
     productStore.fetchProducts(),
-    inventoryStore.fetchTransactions()
+    inventoryStore.fetchDashboardStats()
   ])
 })
 
@@ -22,16 +22,11 @@ const totalProducts = computed((): number => productStore.products.length)
 const lowStockProducts = computed((): number => productStore.products.filter(p => p.stock < 5).length)
 
 const totalInventoryValue = computed((): number => {
-  return inventoryStore.getProductsWithProfitData.reduce((total, product) => {
-    return total + (product.currentStockValue || 0)
-  }, 0)
+  return inventoryStore.dashboardStats?.totalStockValue || 0
 })
 
-const profitData = computed((): ProductWithProfit[] => {
-  return inventoryStore.getProductsWithProfitData
-    .filter(p => p.totalSold > 0)
-    .sort((a, b) => b.totalProfit - a.totalProfit)
-    .slice(0, 5)
+const topProfitProducts = computed(() => {
+  return inventoryStore.dashboardStats?.topProfitProducts || []
 })
 
 const inventoryByType = computed((): InventoryStatsByType => {
@@ -133,19 +128,14 @@ const inventoryByType = computed((): InventoryStatsByType => {
         <h2 class="text-lg font-semibold text-gray-900 mb-4">Produtos com maior lucro</h2>
         
         <div class="space-y-4">
-          <template v-if="profitData.length > 0">
-            <div v-for="product in profitData" :key="product.id" class="border-b pb-3 last:border-b-0 last:pb-0">
-              <div class="flex justify-between">
-                <span class="font-medium text-gray-800">{{ product.name }}</span>
-                <span class="font-semibold text-success-600">{{ formatCurrency(product.totalProfit) }}</span>
-              </div>
-              <div class="text-sm text-gray-500">
-                {{ formatNumber(product.totalSold, 0) }} unidades vendidas
-              </div>
+          <div class="card-content">
+            <div v-for="product in topProfitProducts" :key="product.id" class="product-profit-item">
+              <div class="product-name">{{ product.code }} - {{ product.description }}</div>
+              <div class="product-profit">R$ {{ product.totalProfit.toFixed(2) }}</div>
             </div>
-          </template>
-          <div v-else class="text-gray-500 text-center py-4">
-            No sales data available
+            <div v-if="topProfitProducts.length === 0" class="no-data">
+              Nenhum produto com lucro registrado
+            </div>
           </div>
         </div>
       </div>

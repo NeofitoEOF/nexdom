@@ -94,7 +94,7 @@ public class StockMovementModel extends BaseModel<StockMovementModel> {
         model.setSaleValue(movement.getSaleValue());
         model.setMovementDate(movement.getMovementDate());
         model.setQuantity(movement.getQuantity());
-        model.setDescription(movement.getDescription()); // garante preenchimento
+        model.setDescription(movement.getDescription()); 
         model.addStockMovementLinks(movement);
         
         return model;
