@@ -107,7 +107,7 @@ Para executar o projeto usando Docker, siga os passos abaixo:
 
 ```bash
 # Clone o repositório (se ainda não tiver feito)
-git clone [URL_DO_REPOSITÓRIO]
+git clone git@github.com:NeofitoEOF/nexdom.git
 cd desafio
 
 # Construir a imagem Docker
